@@ -49,11 +49,21 @@ DATA_TOOLS = [
         "icon": "",
         "description": "Intelligent profiling for your data",
     },
+    {
+        "type": "tool",
+        "id": "000000000000000000000000000000000000",
+        "name": "TopicAnalyzer",
+        "name_for_human": "Topic Analyzer",
+        "pretty_name_for_human": "Topic Analyzer",
+        "icon": "",
+        "description": "TopicAnalyzer",
+    },
 ]
 
 
 @app.route("/api/data_tool_list", methods=["POST"])
 def get_data_tool_list() -> List[dict]:
+    print("请求数据工具列表")
     """Gets the data tool list. """
     for i, tool in enumerate(DATA_TOOLS):
         cache_path = f"backend/static/images/{tool['name']}.cache"

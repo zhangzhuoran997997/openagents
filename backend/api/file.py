@@ -226,6 +226,9 @@ def apply_to_conversation() -> Response:
 
             logger.bind(user_id=user_id, chat_id=chat_id, api="/apply",
                         msg_head="Apply file success").debug(file_path)
+            logger.bind(user_id=user_id, chat_id=chat_id, api="/apply",
+                        msg_head="Apply file name").debug(filename)
+
             del db_message["data_for_human"]
 
             return jsonify(response)
@@ -448,6 +451,7 @@ def get_path_tree() -> Response:
         else:
             return Response(response=None, status=f"{UNFOUND} Directory not found")
     except Exception as e:
+        print(e)
         return Response(response=None, status=f"{INTERNAL} Directory not found")
 
 

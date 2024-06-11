@@ -1,4 +1,5 @@
 import traceback
+import os
 from typing import Dict, List, Union
 from flask import Response, request, stream_with_context, Response
 
@@ -19,6 +20,10 @@ from backend.utils.streaming import (
     single_round_chat_with_executor,
     single_round_chat_with_agent_streaming,
 )
+from backend.utils.utils import (
+    get_data_model_cls,
+    load_grounding_source,
+)
 from backend.utils.utils import get_data_summary_cls
 from backend.schemas import OVERLOAD, UNAUTH, NEED_CONTINUE_MODEL
 from real_agents.adapters.llm import BaseLanguageModel
@@ -32,6 +37,10 @@ from real_agents.data_agent import CodeGenerationExecutor, KaggleDataLoadingExec
 from real_agents.adapters.memory import ConversationReActBufferMemory, \
     ReadOnlySharedStringMemory
 
+
+# self code
+from backend.topic.topic_new import topic_analysis
+# import multiprocessing
 
 def create_interaction_executor(
         grounding_source_dict: Dict[str, DataModel],
@@ -64,8 +73,11 @@ def create_interaction_executor(
         memory_key="chat_history", return_messages=True, llm=llm, max_token_limit=3500
     )
     read_only_memory = ReadOnlySharedStringMemory(memory=memory)
+    logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+                    msg_head="create grounding source").debug(grounding_source_dict)
 
     # Initialize tools(executors)
+    # 这几个执行器的run函数都来自chain的执行函数，其实就是多个chain
     basic_chat_executor = ChatExecutor()
     python_code_generation_executor = CodeGenerationExecutor(
         programming_language="python", memory=read_only_memory)
@@ -74,7 +86,175 @@ def create_interaction_executor(
     echart_code_generation_executor = CodeGenerationExecutor(
         programming_language="python", memory=read_only_memory, usage="echarts"
     )
+    topic_code_generation_executor = CodeGenerationExecutor(
+        programming_language="python", memory=read_only_memory, usage="topic")
+    
+    topic_extract_executor = CodeGenerationExecutor(
+        programming_language="python", memory=read_only_memory, usage="topic_extract")
+
     kaggle_data_loading_executor = KaggleDataLoadingExecutor()
+
+    def run_topic_extract_builder(term: str) -> Union[Dict, DataModel]:
+
+        try:
+            stats, topic_dict = topic_analysis(year=2023)
+            logger.bind(api="/chat",
+                        msg_head="Analysis news from ").debug(stats['path'])
+
+            data_summary = f"We retrieve related data that contains {stats['count']} news from different {stats['url_count']} \
+websites during {stats['mintime']} to {stats['maxtime']}.\n\n"
+
+            topics = topic_dict['Topic']
+            counts = topic_dict['Count']
+            summary = topic_dict['Summary']
+            topic_prompt = ""
+            for t, c, s in zip(topics, counts, summary):
+                topic_prompt += f"{t}\t{c}\t{s}\n"
+            new_user_intent = f"Now we are analyizing topic of related data. {data_summary} \
+We have obtained the main topic of these news. Here are all data about topic analysis.\n\n\
+Topic\tCount\tSummary\n{topic_prompt}\
+Please provide a succinct yet meaningful summary for the topic, count and summary.\n\n"
+# Finally, generate Pie code using TopicAnalyzer Tool for visulaizing topic count distribution.\n\n"
+
+            # # 自动加载news数据
+            file_path = topic_dict['path']
+            filename = file_path.split('/')[-1]
+            filename_no_ext = os.path.splitext(filename)[0]
+            
+            data = load_grounding_source(file_path)
+            data_model = get_data_model_cls(filename).from_raw_data(
+                raw_data=data,
+                raw_data_name=filename_no_ext,
+                raw_data_path=file_path,
+            )
+            grounding_source_dict[file_path] = data_model
+
+            input_grounding_source = [gs for gs in grounding_source_dict.values()]
+            
+            # Get the result
+            results = basic_chat_executor.run(
+                # user_intent=term,
+                user_intent=new_user_intent,
+                llm=llm,
+                # grounding_source=input_grounding_source,
+                # user_id=user_id,
+                # chat_id=chat_id,
+                # code_execution_mode=code_execution_mode,
+                # jupyter_kernel_pool=jupyter_kernel_pool,
+            )
+
+            logger.bind(msg_head=f"TopicExtractor results({llm})").debug(results)
+            return results["result"]
+            # if results["result"]["success"]:
+            #     if results["result"]["result"] is not None:
+            #         raw_output = results["result"]["result"]
+            #     elif results["result"]["stdout"] != "":
+            #         raw_output = results["result"]["stdout"]
+            #     else:
+            #         raw_output = ""
+            #     observation = JsonDataModel.from_raw_data(
+            #         {
+            #             "success": True,
+            #             "result": raw_output,
+            #             "images": results["result"]["outputs"] if ".show()" in results[
+            #                 "intermediate_steps"] else [],
+            #             "intermediate_steps": results["intermediate_steps"],
+            #         },
+            #         filter_keys=["images"],
+            #     )
+            # else:
+            #     observation = JsonDataModel.from_raw_data(
+            #         {
+            #             "success": False,
+            #             "result": results["result"]["error_message"],
+            #             "intermediate_steps": results["intermediate_steps"],
+            #         }
+            #     )
+            # return observation
+        except Exception as e:
+            logger.bind(msg_head=f"TopicExtractor error({llm})").error(str(e))
+
+            traceback.print_exc()
+            results = basic_chat_executor.run(user_intent=term, llm=llm)
+            return results["result"]
+
+    def run_topic_analysis_builder(term: str) -> Union[Dict, DataModel]:
+
+        try:
+            # term += "using topic_analysis.csv"
+            # # 自动加载topic datamodel数据
+            # file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_analysis.csv'
+            # filename = 'topic_analysis.csv' 
+            # filename_no_ext = os.path.splitext(filename)[0]
+            
+            # data = load_grounding_source(file_path)
+            # data_model = get_data_model_cls(filename).from_raw_data(
+            #     raw_data=data,
+            #     raw_data_name=filename_no_ext,
+            #     raw_data_path=file_path,
+            # )
+            # grounding_source_dict[file_path] = data_model
+            logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+                    msg_head="grounding source").debug(grounding_source_dict)
+
+            input_grounding_source = [gs for gs in grounding_source_dict.values()]
+            
+            # Get the result
+            results = topic_code_generation_executor.run(
+                user_intent=term,
+                llm=llm,
+                grounding_source=input_grounding_source,
+                user_id=user_id,
+                chat_id=chat_id,
+                code_execution_mode=code_execution_mode,
+                jupyter_kernel_pool=jupyter_kernel_pool,
+            )
+
+            logger.bind(msg_head=f"PythonCodeBuilder results({llm})").debug(results)
+
+            if results["result"]["success"]:
+                if results["result"]["result"] is not None:
+                    raw_output = results["result"]["result"]
+                elif results["result"]["stdout"] != "":
+                    raw_output = results["result"]["stdout"]
+                else:
+                    raw_output = ""
+                # observation = JsonDataModel.from_raw_data(
+                #     {
+                #         "success": True,
+                #         "result": raw_output,
+                #         "images": results["result"]["outputs"] if ".show()" in results[
+                #             "intermediate_steps"] else [],
+                #         "intermediate_steps": results["intermediate_steps"],
+                #     },
+                #     filter_keys=["images"],
+                # )
+                observation = JsonDataModel.from_raw_data(
+                    {
+                        "success": True,
+                        "result": "",
+                        "echarts": polish_echarts(raw_output),
+                        "images": results["result"]["outputs"] if ".show()" in results[
+                            "intermediate_steps"] else [],
+                        "intermediate_steps": results["intermediate_steps"],
+                    },
+                    filter_keys=["images"],
+                )
+            else:
+                observation = JsonDataModel.from_raw_data(
+                    {
+                        "success": False,
+                        "result": results["result"]["error_message"],
+                        "intermediate_steps": results["intermediate_steps"],
+                    }
+                )
+            return observation
+        except Exception as e:
+            logger.bind(msg_head=f"TopicAnalyzer error({llm})").error(str(e))
+
+            traceback.print_exc()
+            results = basic_chat_executor.run(user_intent=term, llm=llm)
+            return results["result"]
 
     def run_python_code_builder(term: str) -> Union[Dict, DataModel]:
         try:
@@ -257,8 +437,41 @@ def create_interaction_executor(
             traceback.print_exc()
             results = basic_chat_executor.run(user_intent=term, llm=llm)
             return results["result"]
-
+    #TODO 查看一下langchain定义tool的过程
     tool_dict = {
+
+        # 添加自定义的tool，例如pie图和折线图
+#         "TopicAnalyzer": Tool(
+#             name="TopicAnalyzer",
+#             func=run_topic_analysis_builder,
+#             description="""
+# Description: This tool aims to analyze hot topics in news data and extract these topics to visualize them into pie charts by using pyecharts. Firstly, it takes your original news data and creates cluster algorithms in python to extract hot topics and their corresponding number of news articles. Secondly, make a summary about the news data. Finally, use the pie charts to visualize hot topics and their count.
+# Input: A natural question and the path of news data.
+# Output: A Python dealing data program + its execution result to visualize hot topics + a summary ahout news data + an Echarts script, specifically tailored for generated topics, that generates an interactive chart upon execution.
+# Note: The tool MUST be used whenever you want to analyze topic from news.
+# """,
+#         ),
+        "TopicAnalyzer": Tool(
+                    name="TopicAnalyzer",
+                    func=run_topic_analysis_builder,
+                    description="""
+Description: This tool aims to visualize hot topics into pie charts by using pyecharts. Firstly, it takes hot topics and their corresponding number of news articles. Secondly, make a summary about the news data. Finally, use the pie charts to visualize hot topics and their count.
+Input: A natural question and the path of topic and the corresponding count.
+Output: A summary ahout news data + an Echarts script, specifically tailored for main topics, that generates an interactive chart upon execution.
+Note: The tool MUST be used whenever you want to visualize hot topics from news.
+        """,
+                ),
+        "TopicExtractor": Tool(
+            name="TopicExtractor",
+            func=run_topic_extract_builder,
+            description="""
+Description: This tool aims to extract hot topics from news data. Firstly, it extracts hot topics and their corresponding number from news articles. Secondly, make a summary about the data.
+Input: A natural question.
+Output: A summary ahout topics of news data.
+Note: The tool MUST be used whenever you want to extract topics from news.
+""",
+        ),
+
         "PythonCodeBuilder": Tool(
             name="PythonCodeBuilder",
             func=run_python_code_builder,
@@ -306,12 +519,14 @@ Output: The action you want to perform, and the extracted path or searched relev
         if tool["name"] not in IGNORE_TOOLS:
             tools.append(tool_dict[tool["name"]])
 
+    logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+                    msg_head="Tools").debug(tools)
+
     # Build the chat agent with LLM and tools
     continue_model = llm_name if llm_name in NEED_CONTINUE_MODEL else None
     interaction_executor = initialize_agent(tools, llm, continue_model, memory=memory,
                                             verbose=True)
     return interaction_executor
-
 
 @app.route("/api/chat", methods=["POST"])
 def chat() -> Response | Dict:
@@ -325,6 +540,9 @@ def chat() -> Response | Dict:
         parent_message_id = int(request_json["parent_message_id"])
         code_interpreter_languages = request_json.get("code_interpreter_languages", [])
         code_interpreter_tools = request_json.get("code_interpreter_tools", [])
+        # 暂时将topic tool加上去
+        code_interpreter_tools.append({'name': 'TopicExtractor'})
+
         api_call = request_json.get("api_call", None)
         llm_name = request_json["llm_name"]
         temperature = request_json.get("temperature", 0.7)
@@ -341,6 +559,18 @@ def chat() -> Response | Dict:
         logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
                     msg_head="Request json").debug(request_json)
 
+        # multiprocessing.set_start_method('spawn')
+
+        logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+                    msg_head="Test").debug('!!!'*100)
+
+        grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
+                                                                                chat_id,
+                                                                                default_value={})
+
+        logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+                    msg_head="grounding source").debug(grounding_source_dict)
+
         if api_call:
             # Load/init grounding source
             grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
@@ -354,10 +584,14 @@ def chat() -> Response | Dict:
             )
             assert api_call["api_name"] == "DataProfiling"
             ai_message_id = message_id_register.add_variable("")
+            
+            #{'droppable': False, 'highlight': False, 'id': 1, 'parent': 0, 'text': 'test.csv'}
             file_node = api_call["args"]["activated_file"]
-
+            #获取用户本地存储文件夹
             folder = create_personal_folder(user_id)
+            #获取本地存储apply文件的文件路径
             file_path = _get_file_path_from_node(folder, file_node)
+            #获取数据摘要类，根据不同数据类型，本质上是一个执行数据摘要的chain
             executor = get_data_summary_cls(file_path)()
             gs = grounding_source_dict[file_path]
             return stream_with_context(
@@ -378,6 +612,7 @@ def chat() -> Response | Dict:
                 )
             )
         else:
+            
             # Load/init grounding source
             grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
                                                                                 chat_id,
@@ -433,3 +668,172 @@ def chat() -> Response | Dict:
             return Response(response=None, status=f"{UNAUTH} Invalid Authentication")
         return Response(response=None,
                         status=f"{OVERLOAD} Server is currently overloaded")
+
+
+
+
+
+# def obtain_topic(path):
+#     stats, topic_dict = topic_analysis(year=2023)
+#     logger.bind(api="/chat",
+#                 msg_head="Analysis news from ").debug(stats['path'])
+
+#     data_summary = f"The data contains {stats['count']} news from different {stats['url_count']} \
+# websites during {stats['mintime']} to {stats['maxtime']}.\n\n"
+
+#     # topics = ['Green transformation', 'ecological balance', 'energy trasnition']
+#     # counts = [288, 197, 109]
+#     topics = topic_dict['topic']
+#     counts = topic_dict['count']
+#     summary = topic_dict['summary']
+#     topic_prompt = ""
+#     for t, c, s in zip(topics, counts, summary):
+#         topic_prompt += f"{t}\t{c}\t{s}\n"
+#     new_user_intent = f"Now we are analyizing topic about news of Taiwan. {data_summary} \
+# First, provide a succinct yet meaningful summary of the above information. \n\n\
+# Now, We have obtained the main topic of these news. Here are all data about topic analysis.\n\n\
+# Topic\tCount\tSummary\n{topic_prompt}\
+# Second, provide a succinct yet meaningful summary of the topic, count and summary.\n\n\
+# Third, plot a Pie chart using pyecharts for topic count distribution. \
+# Each topic has different count. Note that you need to use all the data.\n\n"
+
+#     return new_user_intent
+
+
+# @app.route("/api/chat", methods=["POST"])
+# def chat() -> Response | Dict:
+#     """Returns the chat response of data agent."""
+#     try:
+#         # Get request parameters
+#         request_json = request.get_json()
+#         user_id = request_json.pop("user_id", DEFAULT_USER_ID)
+#         chat_id = request_json["chat_id"]
+#         user_intent = request_json["user_intent"]
+#         parent_message_id = int(request_json["parent_message_id"])
+#         code_interpreter_languages = request_json.get("code_interpreter_languages", [])
+#         code_interpreter_tools = request_json.get("code_interpreter_tools", [])
+#         api_call = request_json.get("api_call", None)
+#         llm_name = request_json["llm_name"]
+#         temperature = request_json.get("temperature", 0.7)
+#         stop_words = ["[RESPONSE_BEGIN]", "TOOL RESPONSE"]
+#         kwargs = {
+#             "temperature": temperature,
+#             "stop": stop_words,
+#         }
+
+#         # update user intent
+#         # analysis data, return topic and count
+
+#         if '台海局势' in user_intent:
+#             user_intent = obtain_topic('test')
+
+#         # Get language model
+#         stream_handler = AgentStreamingStdOutCallbackHandler()
+#         llm = get_llm(llm_name, **kwargs)
+
+#         logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+#                     msg_head="Request json").debug(request_json)
+
+#         logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+#                     msg_head="Test").debug('!!!'*100)
+#         logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+#                     msg_head="New user intent").debug(user_intent)
+
+#         if api_call:
+#             # Load/init grounding source
+#             grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
+#                                                                                 chat_id,
+#                                                                                 default_value={})
+
+#             # Find the mainstay message list from leaf to root
+#             activated_message_list = message_pool.get_activated_message_list(
+#                 user_id, chat_id, default_value=list(),
+#                 parent_message_id=parent_message_id
+#             )
+#             assert api_call["api_name"] == "DataProfiling"
+#             ai_message_id = message_id_register.add_variable("")
+            
+#             #{'droppable': False, 'highlight': False, 'id': 1, 'parent': 0, 'text': 'test.csv'}
+#             file_node = api_call["args"]["activated_file"]
+#             #获取用户本地存储文件夹
+#             folder = create_personal_folder(user_id)
+#             #获取本地存储apply文件的文件路径
+#             file_path = _get_file_path_from_node(folder, file_node)
+#             #获取数据摘要类，根据不同数据类型，本质上是一个执行数据摘要的chain
+#             executor = get_data_summary_cls(file_path)()
+#             gs = grounding_source_dict[file_path]
+#             return stream_with_context(
+#                 Response(
+#                     single_round_chat_with_executor(
+#                         executor,
+#                         user_intent=gs,
+#                         human_message_id=None,
+#                         ai_message_id=ai_message_id,
+#                         user_id=DEFAULT_USER_ID,
+#                         chat_id=api_call["args"]["chat_id"],
+#                         message_list=activated_message_list,
+#                         parent_message_id=api_call["args"]["parent_message_id"],
+#                         llm=llm,
+#                         app_type="copilot",
+#                     ),
+#                     content_type="application/json",
+#                 )
+#             )
+#         else:
+            
+#             # Load/init grounding source
+#             grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
+#                                                                                 chat_id,
+#                                                                                 default_value={})
+#             # Build executor and run chat
+#             interaction_executor = create_interaction_executor(
+#                 grounding_source_dict=grounding_source_dict,
+#                 code_interpreter_languages=code_interpreter_languages,
+#                 code_interpreter_tools=code_interpreter_tools,
+#                 llm=llm,
+#                 llm_name=llm_name,
+#                 user_id=user_id,
+#                 chat_id=chat_id,
+#                 code_execution_mode=app.config["CODE_EXECUTION_MODE"],
+#             )
+#             # Find the mainstay message list from leaf to root
+#             activated_message_list = message_pool.get_activated_message_list(
+#                 user_id, chat_id, default_value=list(),
+#                 parent_message_id=parent_message_id
+#             )
+#             message_pool.load_agent_memory_from_list(interaction_executor.memory,
+#                                                      activated_message_list)
+#             human_message_id = message_id_register.add_variable(user_intent)
+#             ai_message_id = message_id_register.add_variable("")
+#             return stream_with_context(
+#                 Response(
+#                     single_round_chat_with_agent_streaming(
+#                         interaction_executor=interaction_executor,
+#                         user_intent=user_intent,
+#                         # user_intent=new_user_intent,
+#                         human_message_id=human_message_id,
+#                         ai_message_id=ai_message_id,
+#                         user_id=user_id,
+#                         chat_id=chat_id,
+#                         message_list=activated_message_list,
+#                         parent_message_id=parent_message_id,
+#                         llm_name=llm_name,
+#                         stream_handler=stream_handler,
+#                         app_type="copilot"
+#                     ),
+#                     content_type="application/json",
+#                 )
+#             )
+
+#     except Exception as e:
+#         try:
+#             logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+#                         msg_head="Chat error").error(str(e))
+#             import traceback
+
+#             traceback.print_exc()
+#         except:
+#             # if user_id & chat_id not found, unauth err
+#             return Response(response=None, status=f"{UNAUTH} Invalid Authentication")
+#         return Response(response=None,
+#                         status=f"{OVERLOAD} Server is currently overloaded")

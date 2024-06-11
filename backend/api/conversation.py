@@ -15,6 +15,7 @@ from backend.schemas import INTERNAL, UNFOUND
 @app.route("/api/conversations/get_conversation_list", methods=["POST"])
 def get_conversation_list() -> Response:
     """Gets the history conversations."""
+    print('执行get_conversation_list')
     request_json = request.get_json()
     user_id = request_json.pop("user_id", DEFAULT_USER_ID)
     conversations = []
@@ -40,6 +41,7 @@ def get_conversation_list() -> Response:
 @app.route("/api/conversations/get_folder_list", methods=["POST"])
 def get_folder_list() -> Response:
     """Gets the folder list."""
+    print('执行get_folder_list')
     user_id = DEFAULT_USER_ID
     folders = []
     try:
@@ -79,6 +81,7 @@ def process_rich_content_item(data: dict, message_id: str) -> dict:
 @app.route("/api/conversation", methods=["POST"])
 def get_conversation_content() -> Response:
     """Gets the conversation content for one assigned conversation."""
+    print('执行conversation')
     request_json = request.get_json()
     conversation_id = request_json.get("chat_id", None)
     if conversation_id is not None:

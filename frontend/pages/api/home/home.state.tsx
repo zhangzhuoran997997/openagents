@@ -107,6 +107,8 @@ export const initialState: HomeInitialState = {
   codeInterpreterPluginsIsSelected: {
     '0c135359-af7e-473b-8425-1393d2943b57': true, // python
     '8f8e8dbc-ae5b-4950-9f4f-7f5238978806': true, // data profiling
+    '000000000000000000000000000000000000': true, // topic analyzer
+    'a86aebe1-a780-4038-a333-fb2a9d2d25fc': true  // echarts
   },
   isCreateNewConversation: false,
   isStreamingError: false,

@@ -21,6 +21,8 @@ from real_agents.adapters.data_model import MessageDataModel
 from real_agents.adapters.memory import ReadOnlySharedStringMemory
 from real_agents.data_agent.evaluation.python_evaluator import PythonEvaluator
 from real_agents.data_agent.python.echarts_prompt import E_SYSTEM_PROMPT, ECHARTS_REF_CODE, ECHARTS_USER_PROMPT
+from real_agents.data_agent.python.topic_prompt import TOPIC_SYSTEM_PROMPT, TOPIC_REF_CODE, TOPIC_USER_PROMPT
+from real_agents.data_agent.python.topic_extract_prompt import TOPIC_EXTRACT_SYSTEM_PROMPT, TOPIC_EXTRACT_REF_CODE, TOPIC_EXTRACT_USER_PROMPT
 from real_agents.data_agent.python.system_prompt import SYSTEM_PROMPT
 from real_agents.data_agent.python.python_prompt import USER_PROMPT
 from real_agents.adapters.llm import LLMChain
@@ -162,6 +164,27 @@ class PythonChain(Chain, BaseModel):
         return ChatPromptTemplate(input_variables=input_variables, messages=messages)
 
     @classmethod
+    def create_topic_prompt(cls, system_prompt: str, reference_code_prompt: str) -> BasePromptTemplate:
+        input_variables = ["history_code", "question", "data", "reference_code"]
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessagePromptTemplate.from_template(template=TOPIC_USER_PROMPT),
+        ]
+
+        return ChatPromptTemplate(input_variables=input_variables, messages=messages)
+    
+    @classmethod
+    def create_topic_extract_prompt(cls, system_prompt: str, reference_code_prompt: str) -> BasePromptTemplate:
+        input_variables = ["history_code", "question", "data", "reference_code"]
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessagePromptTemplate.from_template(template=TOPIC_EXTRACT_USER_PROMPT),
+        ]
+
+        return ChatPromptTemplate(input_variables=input_variables, messages=messages)
+
+
+    @classmethod
     def from_python_prompt(cls, llm: BaseLanguageModel, **kwargs: Any) -> PythonChain:
         """Load from Echarts prompt."""
         llm_chain = LLMChain(llm=llm, prompt=cls.create_python_prompt(SYSTEM_PROMPT, ""))
@@ -180,6 +203,28 @@ class PythonChain(Chain, BaseModel):
             llm_chain=llm_chain,
             get_answer_expr="",
             reference_code=ECHARTS_REF_CODE,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_topic_prompt(cls, llm: BaseLanguageModel, **kwargs: Any) -> PythonChain:
+        """Load from Topic prompt."""
+        llm_chain = LLMChain(llm=llm, prompt=cls.create_topic_prompt(TOPIC_SYSTEM_PROMPT, ""))
+        return cls(
+            llm_chain=llm_chain,
+            get_answer_expr="",
+            reference_code=TOPIC_REF_CODE,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_topic_extract_prompt(cls, llm: BaseLanguageModel, **kwargs: Any) -> PythonChain:
+        """Load from Topic prompt."""
+        llm_chain = LLMChain(llm=llm, prompt=cls.create_topic_extract_prompt(TOPIC_EXTRACT_SYSTEM_PROMPT, ""))
+        return cls(
+            llm_chain=llm_chain,
+            get_answer_expr="",
+            reference_code=TOPIC_EXTRACT_REF_CODE,
             **kwargs,
         )
 

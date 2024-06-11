@@ -248,6 +248,7 @@ def single_round_chat_with_agent_streaming(
         timeout = TIME_OUT_MAP[app_type]
         LEFT_SIGN = "("
         RIGHT_SIGN = ")"
+        # 这些变量用于处理转换的链接
         start_buffer = False
         streamed_transition_text_buffer = ""
         streamed_links = []
@@ -472,6 +473,7 @@ def single_round_chat_with_executor(
 ) -> Any:
     """Streams the response of the executor to the frontend."""
     stream_handler = executor.stream_handler
+    # 多进程管理器，用于在不同进程之间共享数据
     share_manager = multiprocess.Manager()
     err_pool: Dict[str, Any] = share_manager.dict()
     memory_pool: Dict[str, Any] = share_manager.dict()
@@ -493,6 +495,7 @@ def single_round_chat_with_executor(
 
     empty_s_time: float = -1
     timeout = TIME_OUT_MAP[app_type]
+    # 分出来一个进程去和llm进行通信，当前进程继续执行
     chat_thread.start()
     yield pack_json(
         {
@@ -506,9 +509,12 @@ def single_round_chat_with_executor(
         "text": executor.tool_name,
         "type": STREAM_TOOL_TYPE,
     }
+    # 返回当前使用的工具，用于前端展示
     yield _streaming_block(data_summary_tool_item, is_final=False, user_id=user_id, chat_id=chat_id)
     is_block_first = True
     final_answer = []
+
+    # 通过while循环进行等待
     while chat_thread.is_alive() or len(stream_handler._all) > 0:
         if stream_handler.is_end:
             break
@@ -546,6 +552,7 @@ def single_round_chat_with_executor(
             )
             time.sleep(0.035)
     chat_thread.join()
+    # 判断是否进程有报错
     stop_flag, timeout_flag, error_msg = threading_pool.flush_thread(chat_id)
     error_msg = err_pool.pop(chat_id, None)
     if stop_flag:
@@ -562,6 +569,7 @@ def single_round_chat_with_executor(
         yield pack_json({"success": False, "error": "internal"})
         return
     # Response Success!!
+    # 删除共享列表、流处理器、内存池、错误池、共享管理器和执行器。
     del share_list, stream_handler
     del memory_pool, err_pool, share_manager, executor
 

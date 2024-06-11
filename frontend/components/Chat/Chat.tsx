@@ -426,6 +426,21 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                       </div>
                     </Paper>
                   </div>
+                  <div className="text-center text-black text-lg p-5">
+                    您可以从这些问题开始：
+                    <QuestionSuggestion
+                      followUpQuestions={["请分析一下近期台海局势","请分析一下近期中东局势","请分析一下近期欧洲局势"]}
+                      scrollToBottom={() => {
+                        messagesEndRef.current?.scrollIntoView({
+                          behavior: 'smooth',
+                        });
+                      }}
+                      onClick={(message) => {
+                        setCurrentMessage(message);
+                        handleSend(message, 0, false, null);
+                      }}
+                    />
+                  </div>
                 </div>
               </>
             ) : (

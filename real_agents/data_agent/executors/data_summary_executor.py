@@ -39,21 +39,26 @@ Begin."
     ) -> Dict[str, Any]:
         summary = ""
         if isinstance(grounding_source, TableDataModel):
+            # csv文件表格
             df = grounding_source.raw_data
+            # 文件名称
             df_name = grounding_source.raw_data_name
-            # Basic summary
+            
+            # Basic summary with human rule
+            # 1. 表格的行数和列数
+            # 2. 每列的平均唯一值数量
+            # 3. 是否有缺失值
             summary += f"Your table {df_name} contains {df.shape[0]} rows and {df.shape[1]} columns. "
-
             null_count = df.isnull().sum().sum()  # Get total number of null values
             unique_values_avg = df.nunique().mean()  # Get average number of unique values
-
             summary += f"On average, each column has about {unique_values_avg:.0f} unique values. "
             if null_count > 0:
                 summary += f"Watch out, there are {null_count} missing values in your data. "
             else:
                 summary += "Good news, no missing values in your data. "
 
-            # Intelligent summary
+            # Intelligent summary with llm
+            #TODO 这个地方可以用新的chain代替
             if use_intelligent_summary:
                 intelligent_summary = self._intelligent_summary(
                     grounding_source,

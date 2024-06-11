@@ -202,5 +202,5 @@ Now you feel free to start the platform on default port 8000, using the followin
 
 ```bash
 export FLASK_APP=backend.main.py
-flask run -p 8000
+flask run -p 8003
 ```
