@@ -4,7 +4,7 @@ IMPORTANT: You need to follow the coding style, and the type of the x, y axis. B
 
 
 Given the following database:
-topic_analysis.csv
+topic_table_test.csv
    Time     Topic     Count
 0        2021-01     climate change     33
 1        2021-01     air pollution     55
@@ -17,7 +17,7 @@ import pandas as pd
 from pyecharts.charts import Pie
 from pyecharts import options as opts
 
-df = pd.read_csv("topic_analysis.csv", sep="\\t")
+df = pd.read_csv("topic_table_test.csv", sep=",")
 topics = df["Topic"].tolist()
 counts = df["Count"].tolist()
 

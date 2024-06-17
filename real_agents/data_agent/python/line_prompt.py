@@ -4,54 +4,6 @@ IMPORTANT: You need to follow the coding style, and the type of the x, y axis. B
 
 
 Given the following database:
-topic_hot_time.csv
-   Time     Topic     Count
-0        2021-01     climate change     33
-1        2021-01     air pollution     55
-2        2021-01     covid-19     26
-3        2021-02     climate change     39
-4        2021-02     air pollution     63
-5        2021-02     covid-19     46
-6        2021-03     climate change     63
-7        2021-03     air pollution     75
-8        2021-03     covid-19     52
-
-Q: A line chart about topic over time would be useful. Could you help plot it?
-<code>
-import pandas as pd
-from pyecharts.charts import Line
-from pyecharts import options as opts
-from collections import defaultdict
-
-df = pd.read_csv("topic_hot_time.csv", sep="\\t")
-
-times = []
-
-dict = defaultdict(list)
-for i in range(df.shape[0]):
-    if df['Time'][i] not in times:
-        times.append(df['Time'][i])
-    dict[df['Topic'][i]].append(df['Count'][i])
-
-line = Line(init_opts=opts.InitOpts(width="1500px"))
-
-line.add_xaxis(times)
-for key in dict.keys():
-    line.add_yaxis(key, [int(i) for i in dict[key]])
-    print(dict[key])
-
-line.set_global_opts(title_opts=opts.TitleOpts(title='Topic River'),xaxis_opts=opts.AxisOpts(
-            axislabel_opts={"interval":"0"}
-        ))
-line.set_series_opts(
-     areastyle_opts=opts.AreaStyleOpts(opacity=0.5), # 透明度
-     label_opts=opts.LabelOpts(is_show=False), # 是否显示标签
- )
-ret_json = line.dump_options()
-print(ret_json)
-</code>
-
-Given the following database:
 sentiment.csv
    Time     Sentiment     Count
 0        2021-01     positive     33
@@ -89,6 +41,54 @@ for key in dict.keys():
     print(dict[key])
 
 line.set_global_opts(title_opts=opts.TitleOpts(title='Sentiment River'),xaxis_opts=opts.AxisOpts(
+            axislabel_opts={"interval":"0"}
+        ))
+line.set_series_opts(
+     areastyle_opts=opts.AreaStyleOpts(opacity=0.5),
+     label_opts=opts.LabelOpts(is_show=False),
+ )
+ret_json = line.dump_options()
+print(ret_json)
+</code>
+
+Given the following database:
+topic_hot_time.csv
+   Time     Topic     Count
+0        2021-01     climate change     33
+1        2021-01     air pollution     55
+2        2021-01     covid-19     26
+3        2021-02     climate change     39
+4        2021-02     air pollution     63
+5        2021-02     covid-19     46
+6        2021-03     climate change     63
+7        2021-03     air pollution     75
+8        2021-03     covid-19     52
+
+Q: A line chart about topic over time would be useful. Could you help plot it?
+<code>
+import pandas as pd
+from pyecharts.charts import Line
+from pyecharts import options as opts
+from collections import defaultdict
+
+df = pd.read_csv("topic_hot_time.csv", sep="\\t")
+
+times = []
+
+dict = defaultdict(list)
+for i in range(df.shape[0]):
+    if df['Time'][i] not in times:
+        times.append(df['Time'][i])
+    dict[df['Topic'][i]].append(df['Count'][i])
+
+line = Line(init_opts=opts.InitOpts(width="1500px"))
+
+line.add_xaxis(times)
+for key in dict.keys():
+    line.add_yaxis(key, [int(i) for i in dict[key]])
+    print(dict[key])
+
+line.set_global_opts(title_opts=opts.TitleOpts(title='Topic River'),xaxis_opts=opts.AxisOpts(
             axislabel_opts={"interval":"0"}
         ))
 line.set_series_opts(

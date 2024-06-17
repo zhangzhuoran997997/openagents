@@ -132,6 +132,18 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             )
             grounding_source_dict[file_path] = data_model
 
+            file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/sentiment.csv'
+            filename = 'sentiment.csv'
+            filename_no_ext = os.path.splitext(filename)[0]
+            
+            data = load_grounding_source(file_path)
+            data_model = get_data_model_cls(filename).from_raw_data(
+                raw_data=data,
+                raw_data_name=filename_no_ext,
+                raw_data_path=file_path,
+            )
+            grounding_source_dict[file_path] = data_model
+
             input_grounding_source = [gs for gs in grounding_source_dict.values()]
             
             # Get the result
@@ -186,17 +198,19 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
         try:
             # term += "using topic_analysis.csv"
             # # 自动加载topic datamodel数据
-            file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_hot.csv'
-            filename = 'topic_hot.csv'
-            filename_no_ext = os.path.splitext(filename)[0]
+            # file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_hot_time.csv'
+            # filename = 'topic_hot_time.csv'
+            # file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/sentiment.csv'
+            # filename = 'sentiment.csv'
+            # filename_no_ext = os.path.splitext(filename)[0]
             
-            data = load_grounding_source(file_path)
-            data_model = get_data_model_cls(filename).from_raw_data(
-                raw_data=data,
-                raw_data_name=filename_no_ext,
-                raw_data_path=file_path,
-            )
-            grounding_source_dict[file_path] = data_model
+            # data = load_grounding_source(file_path)
+            # data_model = get_data_model_cls(filename).from_raw_data(
+            #     raw_data=data,
+            #     raw_data_name=filename_no_ext,
+            #     raw_data_path=file_path,
+            # )
+            # grounding_source_dict[file_path] = data_model
             logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
                     msg_head="line grounding source").debug(grounding_source_dict)
 
