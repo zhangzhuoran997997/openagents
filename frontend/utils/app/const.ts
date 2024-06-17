@@ -24,6 +24,7 @@ export const API_MOVE_FILES = `${API_ENDPOINT}/file_system/move` as const;
 export const API_CREATE_FILE_FOLDER = `${API_ENDPOINT}/file_system/create_folder` as const;
 export const API_UPDATE_FILE = `${API_ENDPOINT}/file_system/update` as const;
 export const API_DELETE_FILE = `${API_ENDPOINT}/file_system/delete` as const;
+export const API_KNOWLEDGE_UPLOAD = `${API_ENDPOINT}/knowledge/upload` as const;
 export const API_GET_DATA = `${API_ENDPOINT}/get_file` as const;
 export const API_SNOWFLAKE = `${API_ENDPOINT}/snowflake` as const; // added by masood
 export const API_SQL_QUERY = `${API_ENDPOINT}/sql_query` as const; // added by masood
