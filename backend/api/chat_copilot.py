@@ -186,7 +186,7 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
         try:
             # term += "using topic_analysis.csv"
             # # 自动加载topic datamodel数据
-            file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_hot.csv'
+            file_path = 'backend/data/DefaultUser/topic_hot.csv'
             filename = 'topic_hot.csv'
             filename_no_ext = os.path.splitext(filename)[0]
             
