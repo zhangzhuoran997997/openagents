@@ -622,9 +622,9 @@ def chat() -> Response | Dict:
         code_interpreter_languages = request_json.get("code_interpreter_languages", [])
         code_interpreter_tools = request_json.get("code_interpreter_tools", [])
         # 暂时将topic tool加上去
-        code_interpreter_tools.append({'name': 'TopicExtractor'})
-        code_interpreter_tools.append({'name': 'PiePloter'})
-        code_interpreter_tools.append({'name': 'LinePloter'})
+        # code_interpreter_tools.append({'name': 'TopicExtractor'})
+        # code_interpreter_tools.append({'name': 'PiePloter'})
+        # code_interpreter_tools.append({'name': 'LinePloter'})
 
         
 
