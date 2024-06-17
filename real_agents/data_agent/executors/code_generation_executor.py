@@ -125,9 +125,23 @@ class CodeGenerationExecutor:
                 )
                 _input = {"question": user_intent, "data_info": _concat_grounding_source()}
                 result = method(_input)
-            elif self._usage == "topic":
+            elif self._usage == "line":
                 # Python code generation for topic interactive chart
-                method = PythonChain.from_topic_prompt(
+                method = PythonChain.from_line_prompt(
+                    llm,
+                    return_intermediate_steps=return_intermediate_steps,
+                    verbose=True,
+                    memory=self._memory,
+                    user_id=user_id,
+                    chat_id=chat_id,
+                    code_execution_mode=code_execution_mode,
+                    jupyter_kernel_pool=jupyter_kernel_pool,
+                )
+                _input = {"question": user_intent, "data_info": _concat_grounding_source()}
+                result = method(_input)
+            elif self._usage == "pie":
+                # Python code generation for topic interactive chart
+                method = PythonChain.from_pie_prompt(
                     llm,
                     return_intermediate_steps=return_intermediate_steps,
                     verbose=True,

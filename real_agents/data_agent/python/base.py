@@ -22,6 +22,8 @@ from real_agents.adapters.memory import ReadOnlySharedStringMemory
 from real_agents.data_agent.evaluation.python_evaluator import PythonEvaluator
 from real_agents.data_agent.python.echarts_prompt import E_SYSTEM_PROMPT, ECHARTS_REF_CODE, ECHARTS_USER_PROMPT
 from real_agents.data_agent.python.topic_prompt import TOPIC_SYSTEM_PROMPT, TOPIC_REF_CODE, TOPIC_USER_PROMPT
+from real_agents.data_agent.python.pie_prompt import PIE_SYSTEM_PROMPT, PIE_REF_CODE, PIE_USER_PROMPT
+from real_agents.data_agent.python.line_prompt import LINE_SYSTEM_PROMPT, LINE_REF_CODE, LINE_USER_PROMPT
 from real_agents.data_agent.python.topic_extract_prompt import TOPIC_EXTRACT_SYSTEM_PROMPT, TOPIC_EXTRACT_REF_CODE, TOPIC_EXTRACT_USER_PROMPT
 from real_agents.data_agent.python.system_prompt import SYSTEM_PROMPT
 from real_agents.data_agent.python.python_prompt import USER_PROMPT
@@ -164,11 +166,21 @@ class PythonChain(Chain, BaseModel):
         return ChatPromptTemplate(input_variables=input_variables, messages=messages)
 
     @classmethod
-    def create_topic_prompt(cls, system_prompt: str, reference_code_prompt: str) -> BasePromptTemplate:
+    def create_line_prompt(cls, system_prompt: str, reference_code_prompt: str) -> BasePromptTemplate:
         input_variables = ["history_code", "question", "data", "reference_code"]
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessagePromptTemplate.from_template(template=TOPIC_USER_PROMPT),
+            HumanMessagePromptTemplate.from_template(template=LINE_USER_PROMPT),
+        ]
+
+        return ChatPromptTemplate(input_variables=input_variables, messages=messages)
+    
+    @classmethod
+    def create_pie_prompt(cls, system_prompt: str, reference_code_prompt: str) -> BasePromptTemplate:
+        input_variables = ["history_code", "question", "data", "reference_code"]
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessagePromptTemplate.from_template(template=PIE_USER_PROMPT),
         ]
 
         return ChatPromptTemplate(input_variables=input_variables, messages=messages)
@@ -207,13 +219,24 @@ class PythonChain(Chain, BaseModel):
         )
 
     @classmethod
-    def from_topic_prompt(cls, llm: BaseLanguageModel, **kwargs: Any) -> PythonChain:
-        """Load from Topic prompt."""
-        llm_chain = LLMChain(llm=llm, prompt=cls.create_topic_prompt(TOPIC_SYSTEM_PROMPT, ""))
+    def from_line_prompt(cls, llm: BaseLanguageModel, **kwargs: Any) -> PythonChain:
+        """Load from Pir chart prompt."""
+        llm_chain = LLMChain(llm=llm, prompt=cls.create_line_prompt(LINE_SYSTEM_PROMPT, ""))
         return cls(
             llm_chain=llm_chain,
             get_answer_expr="",
-            reference_code=TOPIC_REF_CODE,
+            reference_code=LINE_REF_CODE,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_pie_prompt(cls, llm: BaseLanguageModel, **kwargs: Any) -> PythonChain:
+        """Load from Pir chart prompt."""
+        llm_chain = LLMChain(llm=llm, prompt=cls.create_pie_prompt(PIE_SYSTEM_PROMPT, ""))
+        return cls(
+            llm_chain=llm_chain,
+            get_answer_expr="",
+            reference_code=PIE_REF_CODE,
             **kwargs,
         )
 

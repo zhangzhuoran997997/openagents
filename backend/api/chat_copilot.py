@@ -86,8 +86,11 @@ def create_interaction_executor(
     echart_code_generation_executor = CodeGenerationExecutor(
         programming_language="python", memory=read_only_memory, usage="echarts"
     )
-    topic_code_generation_executor = CodeGenerationExecutor(
-        programming_language="python", memory=read_only_memory, usage="topic")
+    line_code_generation_executor = CodeGenerationExecutor(
+        programming_language="python", memory=read_only_memory, usage="line")
+
+    pie_code_generation_executor = CodeGenerationExecutor(
+        programming_language="python", memory=read_only_memory, usage="pie")
     
     topic_extract_executor = CodeGenerationExecutor(
         programming_language="python", memory=read_only_memory, usage="topic_extract")
@@ -178,7 +181,75 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             results = basic_chat_executor.run(user_intent=term, llm=llm)
             return results["result"]
 
-    def run_topic_analysis_builder(term: str) -> Union[Dict, DataModel]:
+    def run_line_builder(term: str) -> Union[Dict, DataModel]:
+
+        try:
+            # term += "using topic_analysis.csv"
+            # # 自动加载topic datamodel数据
+            file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_hot.csv'
+            filename = 'topic_hot.csv'
+            filename_no_ext = os.path.splitext(filename)[0]
+            
+            data = load_grounding_source(file_path)
+            data_model = get_data_model_cls(filename).from_raw_data(
+                raw_data=data,
+                raw_data_name=filename_no_ext,
+                raw_data_path=file_path,
+            )
+            grounding_source_dict[file_path] = data_model
+            logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
+                    msg_head="line grounding source").debug(grounding_source_dict)
+
+            input_grounding_source = [gs for gs in grounding_source_dict.values()]
+            
+            # Get the result
+            results = line_code_generation_executor.run(
+                user_intent=term,
+                llm=llm,
+                grounding_source=input_grounding_source,
+                user_id=user_id,
+                chat_id=chat_id,
+                code_execution_mode=code_execution_mode,
+                jupyter_kernel_pool=jupyter_kernel_pool,
+            )
+
+            logger.bind(msg_head=f"LineCodeBuilder results({llm})").debug(results)
+
+            if results["result"]["success"]:
+                if results["result"]["result"] is not None:
+                    raw_output = results["result"]["result"]
+                elif results["result"]["stdout"] != "":
+                    raw_output = results["result"]["stdout"]
+                else:
+                    raw_output = ""
+                observation = JsonDataModel.from_raw_data(
+                    {
+                        "success": True,
+                        "result": "",
+                        "echarts": polish_echarts(raw_output),
+                        "images": results["result"]["outputs"] if ".show()" in results[
+                            "intermediate_steps"] else [],
+                        "intermediate_steps": results["intermediate_steps"],
+                    },
+                    filter_keys=["images"],
+                )
+            else:
+                observation = JsonDataModel.from_raw_data(
+                    {
+                        "success": False,
+                        "result": results["result"]["error_message"],
+                        "intermediate_steps": results["intermediate_steps"],
+                    }
+                )
+            return observation
+        except Exception as e:
+            logger.bind(msg_head=f"LinePloter error({llm})").error(str(e))
+
+            traceback.print_exc()
+            results = basic_chat_executor.run(user_intent=term, llm=llm)
+            return results["result"]
+
+    def run_pie_builder(term: str) -> Union[Dict, DataModel]:
 
         try:
             # term += "using topic_analysis.csv"
@@ -195,12 +266,12 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             # )
             # grounding_source_dict[file_path] = data_model
             logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
-                    msg_head="grounding source").debug(grounding_source_dict)
+                    msg_head="pie grounding source").debug(grounding_source_dict)
 
             input_grounding_source = [gs for gs in grounding_source_dict.values()]
             
             # Get the result
-            results = topic_code_generation_executor.run(
+            results = pie_code_generation_executor.run(
                 user_intent=term,
                 llm=llm,
                 grounding_source=input_grounding_source,
@@ -210,7 +281,7 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
                 jupyter_kernel_pool=jupyter_kernel_pool,
             )
 
-            logger.bind(msg_head=f"PythonCodeBuilder results({llm})").debug(results)
+            logger.bind(msg_head=f"PieCodeBuilder results({llm})").debug(results)
 
             if results["result"]["success"]:
                 if results["result"]["result"] is not None:
@@ -250,7 +321,7 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
                 )
             return observation
         except Exception as e:
-            logger.bind(msg_head=f"TopicAnalyzer error({llm})").error(str(e))
+            logger.bind(msg_head=f"PiePloter error({llm})").error(str(e))
 
             traceback.print_exc()
             results = basic_chat_executor.run(user_intent=term, llm=llm)
@@ -451,14 +522,24 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
 # Note: The tool MUST be used whenever you want to analyze topic from news.
 # """,
 #         ),
-        "TopicAnalyzer": Tool(
-                    name="TopicAnalyzer",
-                    func=run_topic_analysis_builder,
+ "LinePloter": Tool(
+                    name="LinePloter",
+                    func=run_line_builder,
                     description="""
-Description: This tool aims to visualize hot topics into pie charts by using pyecharts. Firstly, it takes hot topics and their corresponding number of news articles. Secondly, make a summary about the news data. Finally, use the pie charts to visualize hot topics and their count.
-Input: A natural question and the path of topic and the corresponding count.
-Output: A summary ahout news data + an Echarts script, specifically tailored for main topics, that generates an interactive chart upon execution.
-Note: The tool MUST be used whenever you want to visualize hot topics from news.
+Description: This tool aims to visualize the chnages of hot topics, different sentiments or stances following real time into line charts by using pyecharts. Firstly, it takes topics (sentiments/stances), number and their corresponding time. Secondly, make a summary about the data. Finally, use the line charts to visualize chnages of hot topics, different sentiments or stances following real time.
+Input: A natural question and the path of topic (sentiment/stance), count and the corresponding time.
+Output: A summary ahout data distribution + an Echarts script, specifically tailored for main topics (sentiments/stances), that generates an interactive chart upon execution.
+Note: The tool MUST be used whenever you want to visualize the changes of hot topics, sentiments or stances following real time.
+        """,
+                ),
+        "PiePloter": Tool(
+                    name="PiePloter",
+                    func=run_pie_builder,
+                    description="""
+Description: This tool aims to visualize hot topics, different sentiments or stances into pie charts by using pyecharts. Firstly, it takes topics (sentiments/stances) and their corresponding number. Secondly, make a summary about the data distribution. Finally, use the pie charts to visualize hot topics (sentiments/stances) and their count.
+Input: A natural question and the path of topic (sentiment/stance) and the corresponding count.
+Output: A summary ahout data distribution + an Echarts script, specifically tailored for main topics (sentiments/stances), that generates an interactive chart upon execution.
+Note: The tool MUST be used whenever you want to visualize hot topics, sentiments or stances distribution.
         """,
                 ),
         "TopicExtractor": Tool(
@@ -542,6 +623,11 @@ def chat() -> Response | Dict:
         code_interpreter_tools = request_json.get("code_interpreter_tools", [])
         # 暂时将topic tool加上去
         code_interpreter_tools.append({'name': 'TopicExtractor'})
+        code_interpreter_tools.append({'name': 'PiePloter'})
+        code_interpreter_tools.append({'name': 'LinePloter'})
+
+        
+
 
         api_call = request_json.get("api_call", None)
         llm_name = request_json["llm_name"]
