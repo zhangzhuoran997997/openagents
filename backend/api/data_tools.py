@@ -52,11 +52,29 @@ DATA_TOOLS = [
     {
         "type": "tool",
         "id": "000000000000000000000000000000000000",
-        "name": "TopicAnalyzer",
-        "name_for_human": "Topic Analyzer",
-        "pretty_name_for_human": "Topic Analyzer",
+        "name": "LinePloter",
+        "name_for_human": "LinePloter",
+        "pretty_name_for_human": "LinePloter",
         "icon": "",
-        "description": "TopicAnalyzer",
+        "description": "LinePloter",
+    },
+    {
+        "type": "tool",
+        "id": "000000000000000000000000000000000001",
+        "name": "PiePloter",
+        "name_for_human": "PiePloter",
+        "pretty_name_for_human": "PiePloter",
+        "icon": "",
+        "description": "PiePloter",
+    },
+    {
+        "type": "tool",
+        "id": "000000000000000000000000000000000002",
+        "name": "TopicExtractor",
+        "name_for_human": "TopicExtractor",
+        "pretty_name_for_human": "TopicExtractor",
+        "icon": "",
+        "description": "TopicExtractor",
     },
 ]
 

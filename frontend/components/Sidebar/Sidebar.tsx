@@ -1,6 +1,8 @@
 import { IconMistOff, IconPlus } from '@tabler/icons-react';
 import { ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { API_KNOWLEDGE_UPLOAD } from '@/utils/app/const';
+import toast from 'react-hot-toast'
 
 import HomeContext from '@/pages/api/home/home.context';
 
@@ -142,6 +144,28 @@ const Sidebar = <T,>({
           </button>
         </div>
         {footerComponent}
+        <div>
+          <button
+              className={`flex w-[200px] flex-shrink-0 cursor-pointer select-none items-center justify-center gap-2 bg-[#4B2E83]
+              rounded-xl p-2 text-white font-[600]`}
+              onClick={async () => {
+                let response;
+                try {
+                  response = await fetch(API_KNOWLEDGE_UPLOAD, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                } catch (error: unknown) {
+                  toast.error('Error!');
+                  return;
+                }
+              }}
+            >
+            开发者按钮
+          </button>
+        </div>
       </div>
     </div>
   ) : (

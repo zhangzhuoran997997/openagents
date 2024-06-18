@@ -203,7 +203,6 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             # file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/sentiment.csv'
             # filename = 'sentiment.csv'
             # filename_no_ext = os.path.splitext(filename)[0]
-            
             # data = load_grounding_source(file_path)
             # data_model = get_data_model_cls(filename).from_raw_data(
             #     raw_data=data,
@@ -636,9 +635,9 @@ def chat() -> Response | Dict:
         code_interpreter_languages = request_json.get("code_interpreter_languages", [])
         code_interpreter_tools = request_json.get("code_interpreter_tools", [])
         # 暂时将topic tool加上去
-        code_interpreter_tools.append({'name': 'TopicExtractor'})
-        code_interpreter_tools.append({'name': 'PiePloter'})
-        code_interpreter_tools.append({'name': 'LinePloter'})
+        # code_interpreter_tools.append({'name': 'TopicExtractor'})
+        # code_interpreter_tools.append({'name': 'PiePloter'})
+        # code_interpreter_tools.append({'name': 'LinePloter'})
 
         
 

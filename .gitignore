@@ -156,6 +156,8 @@ instructor-embedding
 
 # plugin cache
 **/static/**/*
+!backend/static/images
+!backend/static/images/**
 
 # frontend cache
 frontend/node_modules/
