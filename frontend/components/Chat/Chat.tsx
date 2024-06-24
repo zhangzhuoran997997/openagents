@@ -429,7 +429,7 @@ export const Chat = memo(({ stopConversationRef }: Props) => {
                   <div className="text-center text-black text-lg p-5">
                     您可以从这些问题开始：
                     <QuestionSuggestion
-                      followUpQuestions={["请分析一下近期台海局势","请分析一下近期中东局势","请分析一下近期欧洲局势"]}
+                      followUpQuestions={["从文本分析和绘图报告两个子任务分析近期台海局势"]}
                       scrollToBottom={() => {
                         messagesEndRef.current?.scrollIntoView({
                           behavior: 'smooth',

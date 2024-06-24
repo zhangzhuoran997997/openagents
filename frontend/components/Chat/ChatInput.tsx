@@ -259,7 +259,7 @@ export const ChatInput = ({
       </div>
 
       <div className="px-3 pt-2 pb-3 text-center text-[12px] text-black/50 md:px-4 md:pt-3 md:pb-6 bg-[#F3F3F3]">
-        Powered by&nbsp;
+        {/* Powered by&nbsp;
         <a
           href="https://xlang.ai"
           target="_blank"
@@ -268,7 +268,7 @@ export const ChatInput = ({
         >
           XLang Team
         </a>
-        .
+        . */}
       </div>
     </div>
   );
