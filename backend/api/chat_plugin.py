@@ -40,8 +40,13 @@ except Exception as e:
 
 # Load plugin info and icon image
 for plugin_type, plugin_info in load_all_plugins_elements().items():
-    @retry(stop_max_attempt_number=10,
-           wait_fixed=2000)  # Retry 3 times with a 2-second delay between retries
+    # print(plugin_type)
+    if plugin_type in ['JOBSEARCH', 'SHOW_ME', 'MAPS', 'ASKYOURPDF', 'NBA_STATS', 'DREAMINTERPRETER']:
+        continue
+    # @retry(stop_max_attempt_number=10,
+    #        wait_fixed=2000)  # Retry 3 times with a 2-second delay between retries
+    @retry(stop_max_attempt_number=1,
+           wait_fixed=2)
     def make_request(_image_url) -> Response:
         response = requests.get(_image_url)  # Replace with your actual request code
         response.raise_for_status()  # Raise an exception for unsuccessful response status codes

@@ -2,7 +2,7 @@ import json
 import pandas as pd
 import os
 import re
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import numpy as np
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
@@ -17,7 +17,7 @@ from torch.utils.data import Dataset
 import transformers
 import pickle
 from backend.topic.params import TABLE_DATA_DIR, NEWS_DIR, sent_embed_model_dir, sent_embed_save_dir, model_id, \
-     DOC_LENGTH, RANDOM_SEED
+     DOC_LENGTH, RANDOM_SEED, save_path
 
 from backend.topic.utils import write_data, get_data, get_json, dump_json
 
@@ -162,6 +162,7 @@ def news_topic_classify(year):
     document_info = document_info.sort_values(by=['Topic', 'Probability'], ascending=[True, False])
     document_info = document_info.drop(columns=['Document'])
     document_info.to_csv(os.path.join(TABLE_DATA_DIR, f'document_table_{year}.csv'), index=True)
+    print("Topic cluster finish!")
     # return stats, topic_model
     return stats
 
@@ -184,8 +185,8 @@ def generate_topic_name_description(year):
     topic_model = BERTopic.load(topic_model_save_file, embedding_model=embedding_model)
     stats, contents = clean_file_read(year)
     
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # print(device)
     save_dir = os.path.join(sent_embed_save_dir, f'document_full_{year}')
     if not os.path.exists(save_dir):
         print(f'produce full topic model of {year}.')
@@ -206,7 +207,8 @@ def generate_topic_name_description(year):
             model_id,
             trust_remote_code=True,
             quantization_config=bnb_config,
-            device_map='auto',
+            device_map={"":0},
+            # device_map='auto',
             # load_in_8bit=True
         )
         model.eval()
@@ -338,6 +340,8 @@ def generate_topic_name_description(year):
     columns_to_remove = ['Representative_Docs']
     topic_info = topic_info.drop(columns=columns_to_remove)
     topic_info.to_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv'), index=False)
+    print("Generate finish!")
+    print(f"save path: {os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv')}")
     # table: topic (Topic, Count, Name, keywords, name, summary)
     # save table news (same)
     '''
@@ -360,34 +364,39 @@ def extract_topic(topk, year):
     '''
     topic_dict = defaultdict(list)
     
-    path = os.path.join(TABLE_DATA_DIR, f'topic_table_test.csv')
+    # path = os.path.join(TABLE_DATA_DIR, f'topic_table_test.csv')
+    path = os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv')
     # datas = pd.read_csv(os.path.join(NEWS_DIR, f'topic_table_full_{year}.csv'))
     # datas = pd.read_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv'))
     datas = pd.read_csv(path)
     
-    # datas = pd.read_csv(f'./topic_table_full_{year}.csv')
-    # keys = ['name', 'summary', 'count']
-    keys = ['Topic', 'Count', 'Summary']
+    
+    keys = ['name', 'count', 'summary']
+    rec_keys = ['Topic', 'Count', 'Summary']
 
     
-    for key in keys:
-        if key == 'name':
-            newkey = 'topic'
-        else:
-            newkey = key
+    for key, newkey in zip(keys, rec_keys):
         for i in range(topk):
             topic_dict[newkey].append(datas[key][i])
-    topic_dict['path'] = path
+
+    tmp = pd.DataFrame(columns=rec_keys)
+    for ind in rec_keys:
+        tmp[ind] = topic_dict[ind]
+    topic_save_path = os.path.join(save_path, f'topic_table_test.csv')
+    tmp.to_csv(topic_save_path)
+    # 将topic_dict内容存储到user目录下面
+
+    topic_dict['path'] = topic_save_path
 
     return topic_dict
 
 
 def topic_analysis(year):
 
-    # stats = news_topic_classify(year)
+    stats = news_topic_classify(year)
 
-    # generate_topic_name_description(year)
-    stats, _ = clean_file_read(year)
+    generate_topic_name_description(year)
+    # stats, _ = clean_file_read(year)
     print(stats)
 
     topic_dict = extract_topic(topk=10, year=year)
@@ -397,8 +406,9 @@ def topic_analysis(year):
     
 # if __name__== "__main__" :
 #     year = 2023
-#     stats = news_topic_classify(year)
-#     print(stats)
+#     topic_analysis(year)
+    # stats = news_topic_classify(year)
+    # print(stats)
 
 #     generate_topic_name_description(year)
 #     # stats, _ = clean_file_read(year)

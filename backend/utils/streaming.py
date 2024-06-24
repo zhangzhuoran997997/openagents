@@ -219,178 +219,369 @@ def single_round_chat_with_agent_streaming(
     """Streams the response of the agent to the frontend."""
     assert app_type in APP_TYPES, f"app_type should be one of {APP_TYPES}"
 
-    with multiprocess.Manager() as share_manager:
-        err_pool: Dict[str, Any] = share_manager.dict()
-        memory_pool: Dict[str, Any] = share_manager.dict()
-        share_list = share_manager.list()
-        memory_pool[chat_id] = []
+    # multiprocess.set_start_method("spawn", force=True)
+    # logger.bind(api="/chat", msg_head="New thread").debug(f'Enter a multiprocess {multiprocess.get_start_method()}')
 
-        stream_handler.for_display = share_list
+    
+    # with multiprocess.Manager() as share_manager:
+    #     err_pool: Dict[str, Any] = share_manager.dict()
+    #     memory_pool: Dict[str, Any] = share_manager.dict()
+    #     share_list = share_manager.list()
+    #     memory_pool[chat_id] = []
 
-        chat_thread = multiprocess.Process(
-            target=_wrap_agent_caller,
-            args=(
-                interaction_executor,
-                {
-                    "input": user_intent,
-                },
-                chat_id,
-                err_pool,
-                memory_pool,
-                [stream_handler],
-            ),
-        )
+    #     stream_handler.for_display = share_list
 
-        threading_pool.register_thread(chat_id, chat_thread)
-        chat_thread.start()
-        empty_s_time: float = -1
-        last_heartbeat_time: float = -1
-        timeout = TIME_OUT_MAP[app_type]
-        LEFT_SIGN = "("
-        RIGHT_SIGN = ")"
-        # 这些变量用于处理转换的链接
-        start_buffer = False
-        streamed_transition_text_buffer = ""
-        streamed_links = []
-        converted_card_info_list = []
-        yield pack_json(
-            {
-                "human_message_id": human_message_id,
-                "ai_message_id": ai_message_id,
-            }
-        )
-        # Display streaming to frontend
-        display_stream = DisplayStream(execution_result_max_tokens=EXECUTION_RESULT_MAX_TOKENS_MAP[app_type])
-        is_block_first, current_block_type = False, None
-        intermediate_list, final_list = [], []  # Only for database storage
-        try:
-            while chat_thread.is_alive() or len(stream_handler.for_display) > 0:
-                # print(memory_pool, err_pool, "out")
-                if stream_handler.is_end:
-                    # The ending of the streaming is marked by the is_end variable from AgentStreamingStdOutCallbackHandler in agent_streaming.py
-                    break
+    #     logger.bind(api="/chat", msg_head="err_pool").debug(f'err_pool: {err_pool}')
+    #     logger.bind(api="/chat", msg_head="memory_pool").debug(f'memory_pool: {memory_pool}')
+    #     logger.bind(api="/chat", msg_head="share_list").debug(f'share_list: {share_list}')
+        
 
-                if len(stream_handler.for_display) == 0:
-                    # first time display list is empty
-                    if empty_s_time == -1:
-                        empty_s_time = time.time()
-                    # already empty for some time
-                    else:
-                        if time.time() - empty_s_time > timeout and chat_thread.is_alive():
-                            threading_pool.timeout_thread(chat_id)
-                            break
+    #     chat_thread = multiprocess.Process(
+    #         target=_wrap_agent_caller,
+    #         args=(
+    #             interaction_executor,
+    #             {
+    #                 "input": user_intent,
+    #             },
+    #             chat_id,
+    #             err_pool,
+    #             memory_pool,
+    #             [stream_handler],
+    #         ),
+    #     )
 
-                    if last_heartbeat_time == -1:
-                        last_heartbeat_time = time.time()
-                    else:
-                        if time.time() - last_heartbeat_time > HEARTBEAT_INTERVAL and chat_thread.is_alive():
-                            last_heartbeat_time = -1
-                            yield _streaming_token(
-                                {"text": "🫀", "type": "heartbeat", "final": False}, False, user_id, chat_id, False
-                            )
+    #     threading_pool.register_thread(chat_id, chat_thread)
+    #     logger.bind(api="/chat", msg_head="for_display start").debug(f'{stream_handler.for_display}')
 
+    #     chat_thread.start()
+    #     empty_s_time: float = -1
+    #     last_heartbeat_time: float = -1
+    #     timeout = TIME_OUT_MAP[app_type]
+    #     LEFT_SIGN = "("
+    #     RIGHT_SIGN = ")"
+    #     # 这些变量用于处理转换的链接
+    #     start_buffer = False
+    #     streamed_transition_text_buffer = ""
+    #     streamed_links = []
+    #     converted_card_info_list = []
+    #     yield pack_json(
+    #         {
+    #             "human_message_id": human_message_id,
+    #             "ai_message_id": ai_message_id,
+    #         }
+    #     )
+    #     # Display streaming to frontend
+    #     display_stream = DisplayStream(execution_result_max_tokens=EXECUTION_RESULT_MAX_TOKENS_MAP[app_type])
+    #     is_block_first, current_block_type = False, None
+    #     intermediate_list, final_list = [], []  # Only for database storage
+    #     logger.bind(api="/chat", msg_head="for_display end").debug(f'{stream_handler.for_display}')
+
+    #     try:
+    #         while chat_thread.is_alive() or len(stream_handler.for_display) > 0:
+    #             # logger.bind(api="/chat", msg_head="continue").debug(f'alive or len()>0')
+
+    #             # print(memory_pool, err_pool, "out")
+    #             if stream_handler.is_end:
+    #                 # The ending of the streaming is marked by the is_end variable from AgentStreamingStdOutCallbackHandler in agent_streaming.py
+    #                 break
+
+    #             if len(stream_handler.for_display) == 0:
+    #                 # first time display list is empty
+    #                 if empty_s_time == -1:
+    #                     empty_s_time = time.time()
+    #                 # already empty for some time
+    #                 else:
+    #                     if time.time() - empty_s_time > timeout and chat_thread.is_alive():
+    #                         threading_pool.timeout_thread(chat_id)
+    #                         break
+
+    #                 if last_heartbeat_time == -1:
+    #                     last_heartbeat_time = time.time()
+    #                 else:
+    #                     if time.time() - last_heartbeat_time > HEARTBEAT_INTERVAL and chat_thread.is_alive():
+    #                         last_heartbeat_time = -1
+    #                         yield _streaming_token(
+    #                             {"text": "🫀", "type": "heartbeat", "final": False}, False, user_id, chat_id, False
+    #                         )
+
+    #             else:
+    #                 empty_s_time = -1
+    #                 last_heartbeat_time = -1
+
+    #             while len(stream_handler.for_display) > 0:
+    #                 token = stream_handler.for_display.pop(0)
+    #                 items_to_display = display_stream.display(token)
+
+    #                 # Skip the "identifier" and "key" token
+    #                 if items_to_display is None:
+    #                     continue
+
+    #                 for item in items_to_display:
+    #                     # Check if the block type is changed
+    #                     if item["type"] != current_block_type:
+    #                         current_block_type = item["type"]
+    #                         is_block_first = True
+    #                     else:
+    #                         is_block_first = False
+    #                     is_final = item.get("final", False)
+
+    #                     # Render the item(s)
+    #                     if item["type"] in STREAM_BLOCK_TYPES:
+    #                         # Render image and echarts as block
+    #                         yield _streaming_block(item, is_final, user_id, chat_id)
+    #                     elif item["type"] in STREAM_TOKEN_TYPES:
+    #                         # Render the rest as plain text
+    #                         item["text"] = _render_preprocess(item["text"])
+    #                         yield _streaming_token(item, is_final, user_id, chat_id, is_block_first)
+    #                     # Save the intermediate steps and final answer
+    #                     if is_final:
+    #                         final_list.append(item)
+    #                     else:
+    #                         intermediate_list.append(item)
+
+    #                     if item["type"] == "transition" and item["text"] == RIGHT_SIGN:
+    #                         start_buffer = False
+    #                         link = streamed_transition_text_buffer
+    #                         streamed_transition_text_buffer = ""
+    #                         card_info_list = extract_card_info_from_text(link)
+    #                         # empty the buffer after extracting card info
+    #                         streamed_transition_text_buffer = ""
+    #                         if len(card_info_list) > 0:
+    #                             streaming_card_info_list: list[dict[str, Any]] = [
+    #                                 {
+    #                                     "final_answer": {
+    #                                         "text": json.dumps(card_info),
+    #                                         "type": "card_info",
+    #                                     },
+    #                                     "is_block_first": False,
+    #                                     "streaming_method": "card_info",
+    #                                     "user_id": user_id,
+    #                                     "chat_id": chat_id,
+    #                                 }
+    #                                 for card_info in card_info_list
+    #                             ]
+    #                             streamed_links.extend([card_info["web_link"] for card_info in card_info_list])
+    #                             converted_card_info_list.extend(
+    #                                 [
+    #                                     {
+    #                                         "text": stream_card_info["final_answer"]["text"],
+    #                                         "type": stream_card_info["final_answer"]["type"],
+    #                                     }
+    #                                     for stream_card_info in streaming_card_info_list
+    #                                 ]
+    #                             )
+    #                             for streaming_card_info in streaming_card_info_list:
+    #                                 yield pack_json(streaming_card_info)
+
+    #                     if start_buffer == True:
+    #                         streamed_transition_text_buffer += item["text"]
+
+    #                     if item["type"] == "transition" and item["text"] == LEFT_SIGN:
+    #                         start_buffer = True
+
+    #     except Exception as e:
+    #         import traceback
+
+    #         traceback.print_exc()
+    #     # Wait for the chat thread to finish
+    #     chat_thread.join()
+    #     stop_flag, timeout_flag, error_msg = threading_pool.flush_thread(chat_id)
+    #     error_msg = err_pool.pop(chat_id, None)
+    #     # Response Error!!
+    #     if stop_flag:
+    #         yield pack_json({"success": False, "error": "stop"})
+    #         return
+    #     elif timeout_flag:
+    #         yield pack_json({"success": False, "error": "timeout"})
+    #         return
+    #     elif error_msg is not None:
+    #         error_msg_to_render = error_rendering(error_msg)
+    #         yield pack_json({"success": False, "error": "internal", "error_msg": error_msg_to_render})
+    #         return
+    #     elif len(memory_pool[chat_id]) == 0:
+    #         yield pack_json({"success": False, "error": "internal"})
+    #         return
+    #     # Response Success!!
+    #     message_list_from_memory = memory_pool[chat_id]
+    #     del stream_handler
+    #     # share_manager.shutdown()
+    #     del memory_pool, err_pool, share_list, share_manager, interaction_executor
+
+    
+    #     # err_pool: Dict[str, Any] = share_manager.dict()
+    #     # memory_pool: Dict[str, Any] = share_manager.dict()
+    #     # share_list = share_manager.list()
+    
+    err_pool: Dict[str, Any]  = {}
+    memory_pool: Dict[str, Any] = {}
+    memory_pool[chat_id] = []
+    share_list = []
+
+    stream_handler.for_display = share_list
+
+    _wrap_agent_caller(
+        interaction_executor,
+        {
+                "input": user_intent,
+        },
+        chat_id,
+        err_pool,
+        memory_pool,
+        [stream_handler],
+    )
+    
+    
+    empty_s_time: float = -1
+    last_heartbeat_time: float = -1
+    timeout = TIME_OUT_MAP[app_type]
+    LEFT_SIGN = "("
+    RIGHT_SIGN = ")"
+    # 这些变量用于处理转换的链接
+    start_buffer = False
+    streamed_transition_text_buffer = ""
+    streamed_links = []
+    converted_card_info_list = []
+    yield pack_json(
+        {
+            "human_message_id": human_message_id,
+            "ai_message_id": ai_message_id,
+        }
+    )
+    # Display streaming to frontend
+    display_stream = DisplayStream(execution_result_max_tokens=EXECUTION_RESULT_MAX_TOKENS_MAP[app_type])
+    is_block_first, current_block_type = False, None
+    intermediate_list, final_list = [], []  # Only for database storage
+    logger.bind(api="/chat", msg_head="for_display start").debug(f'{stream_handler.for_display}')
+
+    try:
+        # while len(stream_handler.for_display) > 0:
+            # print(memory_pool, err_pool, "out")
+            # if stream_handler.is_end:
+            #     # The ending of the streaming is marked by the is_end variable from AgentStreamingStdOutCallbackHandler in agent_streaming.py
+            #     break
+
+            # if len(stream_handler.for_display) == 0:
+            #     # first time display list is empty
+            #     if empty_s_time == -1:
+            #         empty_s_time = time.time()
+            #     # already empty for some time
+            #     else:
+            #         if time.time() - empty_s_time > timeout:
+
+            #             break
+
+            #     if last_heartbeat_time == -1:
+            #         last_heartbeat_time = time.time()
+            #     else:
+            #         if time.time() - last_heartbeat_time > HEARTBEAT_INTERVAL:
+            #             last_heartbeat_time = -1
+            #             yield _streaming_token(
+            #                 {"text": "🫀", "type": "heartbeat", "final": False}, False, user_id, chat_id, False
+            #             )
+
+            # else:
+            #     empty_s_time = -1
+            #     last_heartbeat_time = -1
+
+        while len(stream_handler.for_display) > 0:
+            # logger.bind(api="/chat", msg_head="for_display in").debug(f'{stream_handler.for_display}')
+
+            token = stream_handler.for_display.pop(0)
+            items_to_display = display_stream.display(token)
+
+            # Skip the "identifier" and "key" token
+            if items_to_display is None:
+                continue
+
+            for item in items_to_display:
+                # Check if the block type is changed
+                if item["type"] != current_block_type:
+                    current_block_type = item["type"]
+                    is_block_first = True
                 else:
-                    empty_s_time = -1
-                    last_heartbeat_time = -1
+                    is_block_first = False
+                is_final = item.get("final", False)
 
-                while len(stream_handler.for_display) > 0:
-                    token = stream_handler.for_display.pop(0)
-                    items_to_display = display_stream.display(token)
+                # Render the item(s)
+                if item["type"] in STREAM_BLOCK_TYPES:
+                    # Render image and echarts as block
+                    yield _streaming_block(item, is_final, user_id, chat_id)
+                elif item["type"] in STREAM_TOKEN_TYPES:
+                    # Render the rest as plain text
+                    item["text"] = _render_preprocess(item["text"])
+                    yield _streaming_token(item, is_final, user_id, chat_id, is_block_first)
+                # Save the intermediate steps and final answer
+                if is_final:
+                    final_list.append(item)
+                else:
+                    intermediate_list.append(item)
 
-                    # Skip the "identifier" and "key" token
-                    if items_to_display is None:
-                        continue
+                if item["type"] == "transition" and item["text"] == RIGHT_SIGN:
+                    start_buffer = False
+                    link = streamed_transition_text_buffer
+                    streamed_transition_text_buffer = ""
+                    card_info_list = extract_card_info_from_text(link)
+                    # empty the buffer after extracting card info
+                    streamed_transition_text_buffer = ""
+                    if len(card_info_list) > 0:
+                        streaming_card_info_list: list[dict[str, Any]] = [
+                            {
+                                "final_answer": {
+                                    "text": json.dumps(card_info),
+                                    "type": "card_info",
+                                },
+                                "is_block_first": False,
+                                "streaming_method": "card_info",
+                                "user_id": user_id,
+                                "chat_id": chat_id,
+                            }
+                            for card_info in card_info_list
+                        ]
+                        streamed_links.extend([card_info["web_link"] for card_info in card_info_list])
+                        converted_card_info_list.extend(
+                            [
+                                {
+                                    "text": stream_card_info["final_answer"]["text"],
+                                    "type": stream_card_info["final_answer"]["type"],
+                                }
+                                for stream_card_info in streaming_card_info_list
+                            ]
+                        )
+                        for streaming_card_info in streaming_card_info_list:
+                            yield pack_json(streaming_card_info)
 
-                    for item in items_to_display:
-                        # Check if the block type is changed
-                        if item["type"] != current_block_type:
-                            current_block_type = item["type"]
-                            is_block_first = True
-                        else:
-                            is_block_first = False
-                        is_final = item.get("final", False)
+                if start_buffer == True:
+                    streamed_transition_text_buffer += item["text"]
 
-                        # Render the item(s)
-                        if item["type"] in STREAM_BLOCK_TYPES:
-                            # Render image and echarts as block
-                            yield _streaming_block(item, is_final, user_id, chat_id)
-                        elif item["type"] in STREAM_TOKEN_TYPES:
-                            # Render the rest as plain text
-                            item["text"] = _render_preprocess(item["text"])
-                            yield _streaming_token(item, is_final, user_id, chat_id, is_block_first)
-                        # Save the intermediate steps and final answer
-                        if is_final:
-                            final_list.append(item)
-                        else:
-                            intermediate_list.append(item)
+                if item["type"] == "transition" and item["text"] == LEFT_SIGN:
+                    start_buffer = True
 
-                        if item["type"] == "transition" and item["text"] == RIGHT_SIGN:
-                            start_buffer = False
-                            link = streamed_transition_text_buffer
-                            streamed_transition_text_buffer = ""
-                            card_info_list = extract_card_info_from_text(link)
-                            # empty the buffer after extracting card info
-                            streamed_transition_text_buffer = ""
-                            if len(card_info_list) > 0:
-                                streaming_card_info_list: list[dict[str, Any]] = [
-                                    {
-                                        "final_answer": {
-                                            "text": json.dumps(card_info),
-                                            "type": "card_info",
-                                        },
-                                        "is_block_first": False,
-                                        "streaming_method": "card_info",
-                                        "user_id": user_id,
-                                        "chat_id": chat_id,
-                                    }
-                                    for card_info in card_info_list
-                                ]
-                                streamed_links.extend([card_info["web_link"] for card_info in card_info_list])
-                                converted_card_info_list.extend(
-                                    [
-                                        {
-                                            "text": stream_card_info["final_answer"]["text"],
-                                            "type": stream_card_info["final_answer"]["type"],
-                                        }
-                                        for stream_card_info in streaming_card_info_list
-                                    ]
-                                )
-                                for streaming_card_info in streaming_card_info_list:
-                                    yield pack_json(streaming_card_info)
+    except Exception as e:
+        import traceback
 
-                        if start_buffer == True:
-                            streamed_transition_text_buffer += item["text"]
-
-                        if item["type"] == "transition" and item["text"] == LEFT_SIGN:
-                            start_buffer = True
-
-        except Exception as e:
-            import traceback
-
-            traceback.print_exc()
-        # Wait for the chat thread to finish
-        chat_thread.join()
-        stop_flag, timeout_flag, error_msg = threading_pool.flush_thread(chat_id)
-        error_msg = err_pool.pop(chat_id, None)
-        # Response Error!!
-        if stop_flag:
-            yield pack_json({"success": False, "error": "stop"})
-            return
-        elif timeout_flag:
-            yield pack_json({"success": False, "error": "timeout"})
-            return
-        elif error_msg is not None:
-            error_msg_to_render = error_rendering(error_msg)
-            yield pack_json({"success": False, "error": "internal", "error_msg": error_msg_to_render})
-            return
-        elif len(memory_pool[chat_id]) == 0:
-            yield pack_json({"success": False, "error": "internal"})
-            return
-        # Response Success!!
-        message_list_from_memory = memory_pool[chat_id]
-        del stream_handler
-        # share_manager.shutdown()
-        del memory_pool, err_pool, share_list, share_manager, interaction_executor
+        traceback.print_exc()
+    # Wait for the chat thread to finish
+    
+    error_msg = err_pool.pop(chat_id, None)
+    # Response Error!!
+    # if stop_flag:
+    #     yield pack_json({"success": False, "error": "stop"})
+    #     return
+    # elif timeout_flag:
+    #     yield pack_json({"success": False, "error": "timeout"})
+    #     return
+    # elif error_msg is not None:
+    #     error_msg_to_render = error_rendering(error_msg)
+    #     yield pack_json({"success": False, "error": "internal", "error_msg": error_msg_to_render})
+    #     return
+    # elif len(memory_pool[chat_id]) == 0:
+    #     yield pack_json({"success": False, "error": "internal"})
+    #     return
+    # Response Success!!
+    message_list_from_memory = memory_pool[chat_id]
+    del stream_handler
+    # share_manager.shutdown()
+    del memory_pool, err_pool, share_list, interaction_executor
 
     # Save conversation to memory
     new_human_message = message_list_from_memory[-2]

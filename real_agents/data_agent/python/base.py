@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import torch
 from typing import Any, Dict, List, Optional
 
 from bs4 import BeautifulSoup

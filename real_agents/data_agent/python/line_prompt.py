@@ -38,7 +38,6 @@ line = Line(init_opts=opts.InitOpts(width="1500px"))
 line.add_xaxis(times)
 for key in dict.keys():
     line.add_yaxis(key, [int(i) for i in dict[key]])
-    print(dict[key])
 
 line.set_global_opts(title_opts=opts.TitleOpts(title='Sentiment River'),xaxis_opts=opts.AxisOpts(
             axislabel_opts={"interval":"0"}
@@ -86,7 +85,6 @@ line = Line(init_opts=opts.InitOpts(width="1500px"))
 line.add_xaxis(times)
 for key in dict.keys():
     line.add_yaxis(key, [int(i) for i in dict[key]])
-    print(dict[key])
 
 line.set_global_opts(title_opts=opts.TitleOpts(title='Topic River'),xaxis_opts=opts.AxisOpts(
             axislabel_opts={"interval":"0"}

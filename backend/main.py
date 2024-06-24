@@ -42,8 +42,11 @@ if app.config["CODE_EXECUTION_MODE"] == "docker":
 
 if __name__ == "__main__":
     import multiprocess
-
-    multiprocess.set_start_method("spawn", True)
+    import torch.multiprocessing as mp
+    mp.set_start_method('spawn')
+      
+    # rest of your code here
+    multiprocess.set_start_method("spawn", force=True)
     app.run(debug=True)
     # app.run(debug=False)
 
