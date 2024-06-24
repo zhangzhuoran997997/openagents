@@ -1710,6 +1710,15 @@ DATA_TOOLS = [
         "icon": "",
         "description": "TopicExtractor",
     },
+    {
+        "type": "tool",
+        "id": "000000000000000000000000000000000003",
+        "name": "Retrieval",
+        "name_for_human": "Retrieval",
+        "pretty_name_for_human": "Retrieval",
+        "icon": "",
+        "description": "Retrieval",
+    },
 ]
 
 
