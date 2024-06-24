@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Dict, Union
 
 from langchain.base_language import BaseLanguageModel
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from real_agents.web_agent.web_browsing.base import WebotCallingChain
 

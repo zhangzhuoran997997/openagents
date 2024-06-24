@@ -22,7 +22,7 @@ from langchain.schema import (
     LLMResult,
     PromptValue,
 )
-from pydantic import Extra, Field, root_validator
+from langchain_core.pydantic_v1 import Extra, Field, root_validator
 
 
 def _get_verbosity() -> bool:

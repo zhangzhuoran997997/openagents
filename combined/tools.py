@@ -1,7 +1,7 @@
 """Interface for tools."""
 from inspect import signature
 from typing import Any, Awaitable, Callable, Dict, Optional, Type, Union
-from pydantic import BaseModel, validate_arguments
+from langchain_core.pydantic_v1 import BaseModel, validate_arguments
 
 from langchain.tools.base import BaseTool
 

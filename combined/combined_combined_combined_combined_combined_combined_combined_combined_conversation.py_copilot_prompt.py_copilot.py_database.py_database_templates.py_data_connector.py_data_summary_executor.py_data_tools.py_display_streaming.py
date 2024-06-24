@@ -442,7 +442,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Sequence, Tuple, Union
 from typing_extensions import override
-from pydantic import Field
+from langchain_core.pydantic_v1 import Field
 
 from langchain.agents.agent import AgentOutputParser
 from langchain.agents.utils import validate_tools_single_input
@@ -1068,7 +1068,7 @@ import re
 import ast
 
 import mo_sql_parsing
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 
 from real_agents.adapters.data_model import MessageDataModel, DataModel
 

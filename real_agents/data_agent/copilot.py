@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Sequence, Tuple, Union
 from typing_extensions import override
-from pydantic import Field
+from langchain_core.pydantic_v1 import Field
 
 from langchain.agents.agent import AgentOutputParser
 from langchain.agents.utils import validate_tools_single_input
@@ -47,7 +47,7 @@ class ExceptionTool(BaseTool):
 
 class ConversationalChatAgent(Agent):
     """An agent designed to hold a conversation in addition to using data tools."""
-
+    llm_chain: LLMChain = Field(default_factory=LLMChain)
     output_parser: ConversationOutputParser = Field(default_factory=ConversationOutputParser())
     template_tool_response: str = TEMPLATE_TOOL_RESPONSE
     continue_model: Optional[str] = None
@@ -189,13 +189,14 @@ class ConversationalChatAgent(Agent):
             input_variables=input_variables,
             output_parser=_output_parser,
         )
-        llm_chain = LLMChain(
+        llm_chain2 = LLMChain(
             llm=llm,
             prompt=prompt,
         )
+        #llm_chain2 = prompt | llm
         tool_names = [tool.name for tool in tools]
         return cls(
-            llm_chain=llm_chain,
+            llm_chain=llm_chain2,
             allowed_tools=tool_names,
             output_parser=_output_parser,
             **kwargs,

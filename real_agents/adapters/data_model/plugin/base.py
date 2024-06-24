@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import yaml
 from prance import ResolvingParser
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 
 # get the absolute path of the current file
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))

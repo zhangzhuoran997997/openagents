@@ -2,14 +2,14 @@ import json
 import os
 import shutil
 from typing import Dict, Any
-from flask import Response, jsonify, request, send_file
+from flask import Response, jsonify, request, send_file,g
 
 from backend.app import app
 from backend.main import (
     grounding_source_pool,
     logger,
     message_id_register,
-    message_pool,
+    message_pool
 )
 from backend.schemas import DEFAULT_USER_ID
 from backend.utils.utils import create_personal_folder
@@ -25,7 +25,7 @@ from backend.utils.utils import (
     load_grounding_source,
 )
 from backend.schemas import INTERNAL, UNFOUND
-
+from real_agents.data_agent import KnowledgeBase
 TABLE_HUMAN_SIDE_FORMAT = "material-react-table"
 
 
@@ -441,6 +441,7 @@ def get_path_tree() -> Response:
         highlighted_files = request_json.get("highlighted_files", [])
         if root_path is None:
             return {"error": "root_path parameter is required", "error_code": 404}
+
         if os.path.exists(root_path) and os.path.isdir(root_path):
             current_path_tree_list: list = []
             id_to_path_dict = {0: root_path}
@@ -475,3 +476,31 @@ def set_default_examples() -> Response:
     except Exception as e:
         return Response(response=None,
                         status=f"{INTERNAL} Fail to Set Default Examples")
+
+# @app.route("/api/knowledge/upload", methods=["POST"])
+# def set_default_knowledge_base() -> Response:
+#     """Sets default files for each user."""
+#     try:
+#         # Should be called after auth is verified
+#         print("执行here")
+#         # request_json = request.get_json()
+#         # user_id = request_json.pop("user_id", DEFAULT_USER_ID)
+#         # root_path = create_personal_folder(user_id)
+#         news_knowledge_base = KnowledgeBase(store_type="chroma",embedding_model='all-MiniLM-L6-v2',data_path="/data/zhuoran/data/tw_news/tw_news_semantic_split.jsonl",
+#                     Persist_directory="/data/zhuoran/data/tw_news/Vectorstore/chroma_db/tw_news2023_semantic_percentile_split")
+#         knowledge_base_id = knowledge_base_register.add_variable(news_knowledge_base)
+#         if 'knowledge_base_id' not in g:
+#             g.knowledge_base_id = knowledge_base_id
+#         response = {
+#                 "success": True,
+#                 "knowledge_base_id": knowledge_base_id,
+#                 "message": "Default Knowledge Base is set successfully"
+#             }
+#         if news_knowledge_base._vectorstore is not None:
+#             return jsonify(response)
+#         else:
+#             return Response(response=None,
+#                             status=f"{UNFOUND} Knowledge Base not found")
+#     except Exception as e:
+#         return Response(response=None,
+#                         status=f"{INTERNAL} Fail to Set Knowledge Base")

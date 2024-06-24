@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import root_validator
+from langchain_core.pydantic_v1 import root_validator
 
 from langchain.memory.utils import get_prompt_input_key
 from langchain.base_language import BaseLanguageModel

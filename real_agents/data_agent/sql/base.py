@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Extra, Field
+from langchain_core.pydantic_v1 import BaseModel, Extra, Field
 from loguru import logger
 
 from langchain.base_language import BaseLanguageModel

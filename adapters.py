@@ -190,7 +190,7 @@ class QuestionSuggestionChainChatMemory(QuestionSuggestionChainBase):
 from __future__ import annotations
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import CallbackManagerForChainRun
@@ -274,7 +274,7 @@ from real_agents.adapters.executors.question_suggestion.question_suggestion_exec
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
-from pydantic import Extra
+from langchain_core.pydantic_v1 import Extra
 
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import (
@@ -2435,7 +2435,7 @@ from typing import Any, Dict
 
 import yaml
 from prance import ResolvingParser
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 
 # get the absolute path of the current file
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -3199,7 +3199,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 
 
 class DataModel(BaseModel):
@@ -3525,7 +3525,7 @@ class SQLDatabase(SQLDatabase):
 """Interface for tools."""
 from inspect import signature
 from typing import Any, Awaitable, Callable, Dict, Optional, Type, Union
-from pydantic import BaseModel, validate_arguments
+from langchain_core.pydantic_v1 import BaseModel, validate_arguments
 
 from langchain.tools.base import BaseTool
 
@@ -3711,7 +3711,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import yaml
-from pydantic import BaseModel, root_validator
+from langchain_core.pydantic_v1 import BaseModel, root_validator
 
 from langchain.agents.agent_types import AgentType
 from langchain.agents.tools import InvalidTool
@@ -4363,7 +4363,7 @@ class AgentExecutor(Chain):
 from __future__ import annotations
 
 from typing import Optional, Union
-from pydantic import Extra
+from langchain_core.pydantic_v1 import Extra
 
 from langchain.schema import (
     AgentAction,
@@ -4453,7 +4453,7 @@ __all__ = [
     "BaseSingleActionAgent",
 ]
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import root_validator
+from langchain_core.pydantic_v1 import root_validator
 
 from langchain.memory.utils import get_prompt_input_key
 from langchain.base_language import BaseLanguageModel
@@ -4707,7 +4707,7 @@ type_to_cls_dict: Dict[str, Type[BaseMemory]] = {
     "chat_string_buffer": ConversationStringBufferMemory,
 }
 from typing import Any, Dict, List, Optional
-from pydantic import Extra
+from langchain_core.pydantic_v1 import Extra
 
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
@@ -4874,7 +4874,7 @@ from langchain.schema import (
     LLMResult,
     PromptValue,
 )
-from pydantic import Extra, Field, root_validator
+from langchain_core.pydantic_v1 import Extra, Field, root_validator
 
 
 def _get_verbosity() -> bool:
@@ -5061,7 +5061,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Mapping
 
-from pydantic import root_validator
+from langchain_core.pydantic_v1 import root_validator
 
 from real_agents.adapters.models.openai import ChatOpenAI
 from langchain.schema import ChatResult
@@ -5192,7 +5192,7 @@ from __future__ import annotations
 import logging
 import sys
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
-from pydantic import Extra, Field, root_validator
+from langchain_core.pydantic_v1 import Extra, Field, root_validator
 from tenacity import (
     before_sleep_log,
     retry,

@@ -6,7 +6,7 @@ from real_agents.adapters.data_model.base import DataModel
 class ImageDataModel(DataModel):
     """A data model for image."""
 
-    simple_filename = ""
+    simple_filename :str = ""
 
     def get_raw_data(self) -> Any:
         return self.raw_data

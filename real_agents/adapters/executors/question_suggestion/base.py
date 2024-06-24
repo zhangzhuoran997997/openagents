@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import CallbackManagerForChainRun

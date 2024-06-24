@@ -22,7 +22,7 @@ from langchain.callbacks.base import (
 from langchain.callbacks.openai_info import OpenAICallbackHandler
 from langchain.callbacks.stdout import StdOutCallbackHandler
 from langchain.callbacks.tracers.langchain import LangChainTracer
-from langchain.callbacks.tracers.langchain_v1 import LangChainTracerV1, TracerSessionV1
+from langchain.callbacks.tracers.langchain_v1 import LangChainTracerV1#, TracerSessionV1
 from langchain.callbacks.tracers.schemas import TracerSession
 from langchain.callbacks.tracers.stdout import ConsoleCallbackHandler
 from langchain.schema import (
@@ -58,16 +58,16 @@ def get_openai_callback() -> Generator[OpenAICallbackHandler, None, None]:
     openai_callback_var.set(None)
 
 
-@contextmanager
-def tracing_enabled(
-    session_name: str = "default",
-) -> Generator[TracerSessionV1, None, None]:
-    """Get Tracer in a context manager."""
-    cb = LangChainTracerV1()
-    session = cast(TracerSessionV1, cb.load_session(session_name))
-    tracing_callback_var.set(cb)
-    yield session
-    tracing_callback_var.set(None)
+# @contextmanager
+# def tracing_enabled(
+#     session_name: str = "default",
+# ) -> Generator[TracerSessionV1, None, None]:
+#     """Get Tracer in a context manager."""
+#     cb = LangChainTracerV1()
+#     session = cast(TracerSessionV1, cb.load_session(session_name))
+#     tracing_callback_var.set(cb)
+#     yield session
+#     tracing_callback_var.set(None)
 
 
 @contextmanager

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, Union
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from langchain.base_language import BaseLanguageModel
 

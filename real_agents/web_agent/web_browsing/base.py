@@ -16,7 +16,7 @@ from langchain.prompts.chat import (
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from real_agents.adapters.memory import ReadOnlySharedStringMemory
 from real_agents.web_agent.web_browsing.prompt import (

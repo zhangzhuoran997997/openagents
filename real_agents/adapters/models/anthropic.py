@@ -1,12 +1,13 @@
 from typing import Any, Dict, List, Optional
-from pydantic import Extra
+from langchain_core.pydantic_v1 import Extra
 
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForLLMRun,
     CallbackManagerForLLMRun,
 )
 from langchain.chat_models.base import BaseChatModel
-from langchain.llms.anthropic import _AnthropicCommon
+#from langchain.llms.anthropic import _AnthropicCommon
+from langchain_community.llms.anthropic import _AnthropicCommon
 from langchain.schema import (
     AIMessage,
     BaseMessage,

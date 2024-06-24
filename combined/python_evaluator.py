@@ -1,6 +1,6 @@
 import os
 from typing import Any, List, Optional, Tuple, Dict
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 import requests
 import time
 import ast

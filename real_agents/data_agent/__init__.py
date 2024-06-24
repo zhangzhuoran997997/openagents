@@ -8,6 +8,7 @@ from real_agents.data_agent.executors.data_summary_executor import (
     ImageSummaryExecutor,
 )
 from real_agents.data_agent.executors.kaggle_data_loading_executor import KaggleDataLoadingExecutor
+from real_agents.data_agent.executors.retriever_executor import KnowledgeRetriever,KnowledgeBase
 from real_agents.data_agent.python.base import PythonChain
 from real_agents.data_agent.sql.base import SQLDatabaseChain
 from real_agents.adapters.schema import SQLDatabase

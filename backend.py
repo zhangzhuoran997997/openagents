@@ -1710,15 +1710,6 @@ DATA_TOOLS = [
         "icon": "",
         "description": "TopicExtractor",
     },
-    {
-        "type": "tool",
-        "id": "000000000000000000000000000000000003",
-        "name": "Retrieval",
-        "name_for_human": "Retrieval",
-        "pretty_name_for_human": "Retrieval",
-        "icon": "",
-        "description": "Retrieval",
-    },
 ]
 
 
@@ -3383,7 +3374,7 @@ import re
 import ast
 
 import mo_sql_parsing
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 
 from real_agents.adapters.data_model import MessageDataModel, DataModel
 

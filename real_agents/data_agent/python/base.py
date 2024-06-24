@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import re
-import torch
 from typing import Any, Dict, List, Optional
 
 from bs4 import BeautifulSoup
@@ -16,7 +15,7 @@ from langchain.prompts.chat import (
 )
 from langchain.schema import SystemMessage
 from loguru import logger
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from real_agents.adapters.data_model import MessageDataModel
 from real_agents.adapters.memory import ReadOnlySharedStringMemory

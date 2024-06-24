@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional, Union
-from pydantic import Extra
+from langchain_core.pydantic_v1 import Extra
 
 from langchain.schema import (
     AgentAction,

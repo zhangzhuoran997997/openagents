@@ -46,7 +46,7 @@ FEW_SHOT_INPUT_VARIABLES = ["question", "table_info", "dialect", "top_k"]
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Extra, Field
+from langchain_core.pydantic_v1 import BaseModel, Extra, Field
 from loguru import logger
 
 from langchain.base_language import BaseLanguageModel
@@ -271,7 +271,7 @@ fake_continue_prompt = {
 }
 import os
 from typing import Any, List, Optional, Tuple, Dict
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel
 import requests
 import time
 import ast
@@ -596,7 +596,7 @@ class PythonEvaluator:
 import traceback
 from typing import Any, Dict, List
 
-from pydantic import root_validator
+from langchain_core.pydantic_v1 import root_validator
 
 from real_agents.adapters.schema import SQLDatabase
 
@@ -1135,7 +1135,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Sequence, Tuple, Union
 from typing_extensions import override
-from pydantic import Field
+from langchain_core.pydantic_v1 import Field
 
 from langchain.agents.agent import AgentOutputParser
 from langchain.agents.utils import validate_tools_single_input
@@ -1675,7 +1675,7 @@ from langchain.prompts.chat import (
 )
 from langchain.schema import SystemMessage
 from loguru import logger
-from pydantic import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel, Extra
 
 from real_agents.adapters.data_model import MessageDataModel
 from real_agents.adapters.memory import ReadOnlySharedStringMemory

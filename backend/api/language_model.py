@@ -1,7 +1,9 @@
 import os
 
 from backend.app import app
-from real_agents.adapters.models import ChatOpenAI, ChatAnthropic, AzureChatOpenAI
+#from real_agents.adapters.models import ChatOpenAI, ChatAnthropic, AzureChatOpenAI
+from langchain_openai import ChatOpenAI
+from real_agents.adapters.models import ChatAnthropic, AzureChatOpenAI
 from real_agents.adapters.llm import BaseLanguageModel
 
 LLAMA_DIR = "PATH_TO_LLAMA_DIR"
@@ -27,6 +29,7 @@ def get_llm(llm_name: str, **kwargs) -> BaseLanguageModel:
     if llm_name in ["gpt-3.5-turbo","gpt-3.5-turbo-16k", "gpt-4"]:
         openai_api_type = os.getenv("OPENAI_API_TYPE", "open_ai")
         if openai_api_type == "open_ai":
+            return ChatOpenAI(model="gpt-3.5-turbo-0613",temperature=0.,api_key='sk-7MXSRgc2cFT8G8g2V15NINs0IKGAAbrG8zllzbR1IgdWQxb3',base_url='https://api.chatanywhere.tech/v1')
             chat_openai = ChatOpenAI
             kwargs.update({"model_name": llm_name})
         elif openai_api_type == "azure":
@@ -35,6 +38,8 @@ def get_llm(llm_name: str, **kwargs) -> BaseLanguageModel:
         return chat_openai(
             streaming=True,
             verbose=True,
+            api_key =  'sk-7MXSRgc2cFT8G8g2V15NINs0IKGAAbrG8zllzbR1IgdWQxb3',
+            api_base = 'https://api.chatanywhere.tech/v1',
             **kwargs
         )
     elif llm_name in ["claude-v1", "claude-2"]:

@@ -8,7 +8,8 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import yaml
-from pydantic import BaseModel, root_validator
+#from langchain_core.pydantic_v1 import BaseModel, root_validator
+from langchain_core.pydantic_v1 import BaseModel, root_validator
 
 from langchain.agents.agent_types import AgentType
 from langchain.agents.tools import InvalidTool
@@ -186,8 +187,8 @@ class Agent(BaseSingleActionAgent):
     intermediary work.
     """
 
-    llm_chain: LLMChain
-    output_parser: AgentOutputParser
+    llm_chain: LLMChain = None
+    output_parser: AgentOutputParser = None
     allowed_tools: Optional[List[str]] = None
 
     def dict(self, **kwargs: Any) -> Dict:

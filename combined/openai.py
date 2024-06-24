@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import sys
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
-from pydantic import Extra, Field, root_validator
+from langchain_core.pydantic_v1 import Extra, Field, root_validator
 from tenacity import (
     before_sleep_log,
     retry,
