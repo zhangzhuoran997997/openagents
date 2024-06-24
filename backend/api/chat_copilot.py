@@ -103,7 +103,9 @@ def create_interaction_executor(
     def run_topic_extract_builder(term: str) -> Union[Dict, DataModel]:
 
         try:
-            stats, topic_dict = topic_analysis(year=2023)
+            # raw_data_path = grounding_source_dict[]
+            raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+            stats, topic_dict = topic_analysis(raw_data_path)
             logger.bind(api="/chat",
                         msg_head="Analysis news from ").debug(stats['path'])
 
