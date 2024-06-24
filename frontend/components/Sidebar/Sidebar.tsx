@@ -79,7 +79,7 @@ const Sidebar = <T,>({
         className={`fixed rounded-3xl rounded-l-none top-0 ${side}-0 z-40 flex h-full w-[260px] flex-none flex-col space-y-2 bg-[#031425] p-2 text-[13px] sm:relative sm:top-0`}
       >
         <div className="flex items-center leading-10 h-10 pt-1 pl-4">
-          <a href="https://xlang.ai" target="_blank" rel="noreferrer">
+          {/* <a href="https://xlang.ai" target="_blank" rel="noreferrer">
             <LogoIcon className="fixed top-5 left-5 w-10" />
           </a>
           <span
@@ -92,7 +92,7 @@ const Sidebar = <T,>({
             }}
           >
             XLANG
-          </span>
+          </span> */}
           <CloseSidebarButton onClick={toggleOpen} side={side} />
         </div>
         <span className="border-t border-white/50 pt-3 pl-3 text-white font-[500] text-lg">

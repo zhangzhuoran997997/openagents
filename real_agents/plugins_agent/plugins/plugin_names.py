@@ -10,6 +10,7 @@ class PluginName(str, Enum):
     Enum class for plugin names
     each name is a plugin name 🔌 , each value is the folder name 📁 of the plugin
     """
+    """
     KLARNA = "klarna"
     ZAPIER = "zapier"
     COURSERA = "Coursera"
@@ -26,3 +27,4 @@ class PluginName(str, Enum):
     DREAMINTERPRETER = "DreamInterpreter"
     BIZTOC = "biztoc"
     XWEATHER = "XWeather"
+    """
