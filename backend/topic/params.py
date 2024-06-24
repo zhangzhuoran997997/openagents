@@ -22,4 +22,6 @@ sent_embed_save_dir = '/data/llmagents/data/llm_agent/tai_news_0526/sent_embed/'
 TABLE_DATA_DIR = '/data/llmagents/data/llm_agent/tai_news_0526/table_data/'
 save_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/'
 model_id = '/data/llmagents/plm/llama-2-13B-chat-hf'
+# model_id = '/data/llmagents/plm/llama-2-7B-chat-hf'
+
 # ABSA_MODEL_ID = '/data/dingfei/models/APC'

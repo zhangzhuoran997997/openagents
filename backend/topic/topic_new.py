@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import re
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+import gc
 import numpy as np
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
@@ -35,17 +36,16 @@ from collections import defaultdict
 # spacy.load("en_core_web_sm")
 # nltk.download('punkt')
 
-# year = 2023  # change
 
-
-def clean_file_read(year):
+def clean_file_read(path):
     '''
     read clean data
-    :param year:
+    :param path: the path to raw news
     :return: cleannews
     '''
-    newpath = os.path.join(NEWS_DIR, 'tw_news' + str(2023) + '_r3k.json')
-    news = get_data(newpath)
+    # newpath = os.path.join(NEWS_DIR, 'tw_news' + str(2023) + '_r3k.json')
+
+    news = get_data(path)
     statistics = {}
     maxtime, mintime = "", "3000-01-01"
     urls = []
@@ -77,7 +77,7 @@ def clean_file_read(year):
     statistics["maxtime"] = maxtime
     statistics["mintime"] = mintime
     statistics["lengths"] = sum(lengths) / len(cleannews)
-    statistics["path"] = newpath
+    statistics["path"] = path
 
     print('clean news:', len(cleannews))
     # print(cleannews[0])
@@ -85,24 +85,25 @@ def clean_file_read(year):
 
 
 
-def news_topic_classify(year):
+def news_topic_classify(path):
     '''
     runtime: ~10min
     classify topic based on news, save bertopic models to document_full_2023 (safetensors)
     save topic table and news table to topic_table_2023.csv, document_table_2023.csv
-    :param year:
+    :param path:
     :return: topic_model
     '''
     # read news contents
-    stats, contents = clean_file_read(year)
+    stats, contents = clean_file_read(path)
 
     print("Statics: ", stats)
+    index = path.split('/')[-1].split('.')[0]
     
     # save sentence embedding
-    sent_embed_save_file = os.path.join(sent_embed_save_dir, f'embeddings_{year}.npy')
+    sent_embed_save_file = os.path.join(sent_embed_save_dir, f'embeddings_{index}.npy')
     embedding_model = SentenceTransformer(sent_embed_model_dir)
     if not os.path.exists(sent_embed_save_file):
-        print(f'produce news embedding of {year}.')
+        print(f'produce news embedding of {index}.')
         # sentence-transformers/all-MiniLM-L6-v2
         embeddings = embedding_model.encode(contents, show_progress_bar=True)  # 66125*384
         # save sentence embeddings
@@ -110,9 +111,9 @@ def news_topic_classify(year):
         np.save(sent_embed_save_file, embeddings)
     embeddings = np.load(sent_embed_save_file)
     # save topic model
-    topic_model_save_file = os.path.join(sent_embed_save_dir, f'document_{year}.pkl')
+    topic_model_save_file = os.path.join(sent_embed_save_dir, f'document_{index}.pkl')
     if not os.path.exists(topic_model_save_file):
-        print(f'produce topic model of {year}.')
+        print(f'produce topic model of {index}.')
         # default
         umap_model = UMAP(n_neighbors=15, n_components=5, min_dist=0.0, metric='cosine', random_state=42)
         # default: =min_topic_size=min_cluster_size=10, big: large cluster
@@ -153,7 +154,7 @@ def news_topic_classify(year):
     for col in ['Representation', 'KeyBERT', 'MMR', 'POS', 'Representative_Docs']:
         topic_info[col] = topic_info[col].apply(lambda x: json.dumps(x))
     topic_info = topic_info.drop(columns=['Representative_Docs'])
-    topic_info.to_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_{year}.csv'), index=False)
+    topic_info.to_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_{index}.csv'), index=False)
     # table: topic (Topic,Count,Name,Representation,KeyBERT,MMR,POS)
     # save table news
     document_info = topic_model.get_document_info(contents)
@@ -161,35 +162,40 @@ def news_topic_classify(year):
         columns=['Representation', 'KeyBERT', 'MMR', 'POS', 'Representative_Docs', 'Top_n_words'])
     document_info = document_info.sort_values(by=['Topic', 'Probability'], ascending=[True, False])
     document_info = document_info.drop(columns=['Document'])
-    document_info.to_csv(os.path.join(TABLE_DATA_DIR, f'document_table_{year}.csv'), index=True)
+    document_info.to_csv(os.path.join(TABLE_DATA_DIR, f'document_table_{index}.csv'), index=True)
     print("Topic cluster finish!")
     # return stats, topic_model
+    del topic_model, embedding_model
+    gc.collect()
+    torch.cuda.empty_cache()
     return stats
 
     # table: news (index, Topic, Name, Probability, Representative_document)
 
 
 
-def generate_topic_name_description(year):
+def generate_topic_name_description(path):
     '''
     runtime: ~20min; memory: 13116MB
     generate topic name and description with llama-2-13b-chat 4bit quantization
-    save bertopic models to document_full_2023.pkl
-    save topic table and news table to topic_table_full_2023.csv
-    :param year:
+    save bertopic models to document_full_index.pkl
+    save topic table and news table to topic_table_full_index.csv
+    :param path:
     :return: topic_model
     '''
+
+    index = path.split('/')[-1].split('.')[0]
     # topic name begin
     embedding_model = SentenceTransformer(sent_embed_model_dir)
-    topic_model_save_file = os.path.join(sent_embed_save_dir, f'document_{year}.pkl')
+    topic_model_save_file = os.path.join(sent_embed_save_dir, f'document_{index}.pkl')
     topic_model = BERTopic.load(topic_model_save_file, embedding_model=embedding_model)
-    stats, contents = clean_file_read(year)
+    stats, contents = clean_file_read(path)
     
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # print(device)
-    save_dir = os.path.join(sent_embed_save_dir, f'document_full_{year}')
+    save_dir = os.path.join(sent_embed_save_dir, f'document_full_{index}')
     if not os.path.exists(save_dir):
-        print(f'produce full topic model of {year}.')
+        print(f'produce full topic model of {index}.')
         os.makedirs(save_dir, exist_ok=True)
         # set quantization configuration to load large model with less GPU memory
         # this requires the `bitsandbytes` library
@@ -339,9 +345,9 @@ def generate_topic_name_description(year):
     # columns_to_remove = ['Representation', 'KeyBERT', 'MMR', 'POS', 'Representative_Docs']
     columns_to_remove = ['Representative_Docs']
     topic_info = topic_info.drop(columns=columns_to_remove)
-    topic_info.to_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv'), index=False)
+    topic_info.to_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_full_{index}.csv'), index=False)
     print("Generate finish!")
-    print(f"save path: {os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv')}")
+    print(f"save path: {os.path.join(TABLE_DATA_DIR, f'topic_table_full_{index}.csv')}")
     # table: topic (Topic, Count, Name, keywords, name, summary)
     # save table news (same)
     '''
@@ -355,20 +361,26 @@ def generate_topic_name_description(year):
     '''
     # return topic_model
 
+    # del topic_model, model, embedding_model
+    del topic_model, embedding_model
+    gc.collect()
+    torch.cuda.empty_cache()
 
-def extract_topic(topk, year):
+
+def extract_topic(topk, path):
     '''
     extract topic and document number from topic table topic_table_full_2023.csv
     :param topk topics
     :return: topic_dict
     '''
     topic_dict = defaultdict(list)
+    index = path.split('/')[-1].split('.')[0]
     
     # path = os.path.join(TABLE_DATA_DIR, f'topic_table_test.csv')
-    path = os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv')
-    # datas = pd.read_csv(os.path.join(NEWS_DIR, f'topic_table_full_{year}.csv'))
-    # datas = pd.read_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv'))
-    datas = pd.read_csv(path)
+    npath = os.path.join(TABLE_DATA_DIR, f'topic_table_full_{index}.csv')
+    # path = os.path.join(TABLE_DATA_DIR, f'topic_table_full_{year}.csv'))
+
+    datas = pd.read_csv(npath)
     
     
     keys = ['name', 'count', 'summary']
@@ -391,15 +403,15 @@ def extract_topic(topk, year):
     return topic_dict
 
 
-def topic_analysis(year):
+def topic_analysis(path):
 
-    stats = news_topic_classify(year)
+    stats = news_topic_classify(path)
 
-    generate_topic_name_description(year)
+    generate_topic_name_description(path)
     # stats, _ = clean_file_read(year)
     print(stats)
 
-    topic_dict = extract_topic(topk=10, year=year)
+    topic_dict = extract_topic(topk=10, path=path)
     print(topic_dict)
 
     return stats, topic_dict
