@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 from typing import Dict, Any
-from flask import Response, jsonify, request, send_file,g
+from flask import Response, jsonify, request, send_file
 
 from backend.app import app
 from backend.main import (

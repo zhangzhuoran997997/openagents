@@ -212,5 +212,12 @@ class DisplayStream(BaseModel):
                 tool_response_list.append({"text": chart_json, "type": "echarts", "final": False})
             else:
                 tool_response_list.append({"text": f"""```json{chart_json}```""", "type": "plain", "final": False})
+        if "table" in observation:
+            table_json = observation["table"]
+
+            if is_json(table_json):
+                tool_response_list.append({"text": table_json, "type": "table", "final": True})
+            else:
+                tool_response_list.append({"text": f"""```json{table_json}```""", "type": "plain", "final": False})
 
         return tool_response_list

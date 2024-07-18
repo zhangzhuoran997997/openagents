@@ -2,7 +2,7 @@ APP_TYPES = ["copilot", "plugins", "webot"]
 TIME_STEP = 0.035
 TIME_OUT_MAP = {"copilot": 90, "plugins": 300, "webot": 600}
 # TIME_OUT_MAP = {"copilot": 9000, "plugins": 300, "webot": 600}
-STREAM_BLOCK_TYPES = ["image", "echarts"]
+STREAM_BLOCK_TYPES = ["image", "echarts",'table']
 STREAM_TOKEN_TYPES = ["tool", "transition", "execution_result", "error", "kaggle_search", "kaggle_connect", "plain"]
 EXECUTION_RESULT_MAX_TOKENS_MAP = {"copilot": 1000, "plugins": 2000, "webot": 20000}
 

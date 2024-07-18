@@ -18,7 +18,7 @@
             },
             "args": [
                 "run",
-                "--port=8002"
+                "--port=8003"
             ],
             "jinja": true,
             "autoStartBrowser": false

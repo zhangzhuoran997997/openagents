@@ -2,7 +2,7 @@
 from typing import Any, Dict, List, Union
 
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-
+from langchain_core.messages import BaseMessage
 from real_agents.adapters.data_model import DataModel
 
 
@@ -156,6 +156,25 @@ class AgentStreamingStdOutCallbackHandler(StreamingStdOutCallbackHandler):
         return True
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:
+        self.is_end = False
+        self.generated_tokens = []
+
+        self.pda = JSON_PDA()
+        self.llm_call_id += 1
+        self._in_json = False
+        self._in_key = False
+        self._in_value = False
+        self._direct_display = True
+        self._normal_json = False
+        self.json_key = ""
+        self.json_tmp_stack = []
+
+    def on_chat_model_start(
+        self,
+        serialized: Dict[str, Any],
+        messages: List[List[BaseMessage]],
+        **kwargs: Any,
+    ) -> None:
         self.is_end = False
         self.generated_tokens = []
 

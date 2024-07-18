@@ -2,7 +2,7 @@ import json
 import pandas as pd
 import os
 import re
-# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import gc
 import numpy as np
 from nltk.tokenize import sent_tokenize
@@ -12,21 +12,18 @@ from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 from bertopic.representation import KeyBERTInspired, MaximalMarginalRelevance, PartOfSpeech, TextGeneration
 from bertopic import BERTopic
-from bertopic.representation import OpenAI as bertOpenAI
 import collections
 import torch
 from torch.utils.data import Dataset
 import transformers
 import pickle
-from openai import OpenAI
-
 from backend.topic.params import TABLE_DATA_DIR, NEWS_DIR, sent_embed_model_dir, sent_embed_save_dir, model_id, \
      DOC_LENGTH, RANDOM_SEED, save_path
 
 from backend.topic.utils import write_data, get_data, get_json, dump_json
 
 # from params import TABLE_DATA_DIR, NEWS_DIR, sent_embed_model_dir, sent_embed_save_dir, model_id, \
-#      DOC_LENGTH, RANDOM_SEED, save_path
+#      DOC_LENGTH, RANDOM_SEED,save_path
 
 # from utils import write_data, get_data, get_json, dump_json
 
@@ -118,9 +115,9 @@ def news_topic_classify(path):
     if not os.path.exists(topic_model_save_file):
         print(f'produce topic model of {index}.')
         # default
-        umap_model = UMAP(n_neighbors=50, n_components=5, min_dist=0.0, metric='cosine', random_state=42)
+        umap_model = UMAP(n_neighbors=15, n_components=5, min_dist=0.0, metric='cosine', random_state=42)
         # default: =min_topic_size=min_cluster_size=10, big: large cluster
-        hdbscan_model = HDBSCAN(min_cluster_size=10,max_cluster_size=30, metric='euclidean', cluster_selection_method='eom',
+        hdbscan_model = HDBSCAN(min_cluster_size=10, metric='euclidean', cluster_selection_method='eom',
                                 prediction_data=True)
         # default: stop_words=None, min_df=1, ngram_range=(1,1)
         vectorizer_model = CountVectorizer(stop_words="english", min_df=2, ngram_range=(1, 2))
@@ -148,9 +145,11 @@ def news_topic_classify(path):
             verbose=True  # Set to True if you want to track the stages of the model.
         )
         topics, probs = topic_model.fit_transform(contents, embeddings)
+        #topic_model.save(topic_model_save_file, serialization="pickle", save_ctfidf=True,
+        #                save_embedding_model=embedding_model)
         topic_model.save(topic_model_save_file, serialization="safetensors", save_ctfidf=True,
                          save_embedding_model=embedding_model)
-    topic_model = BERTopic.load(topic_model_save_file, embedding_model=embedding_model)
+    topic_model = BERTopic.load(topic_model_save_file,embedding_model=embedding_model)
     # save table topic
     topic_info = topic_model.get_topic_info()
     # json dump list
@@ -163,6 +162,7 @@ def news_topic_classify(path):
     document_info = topic_model.get_document_info(contents)
     document_info = document_info.drop(
         columns=['Representation', 'KeyBERT', 'MMR', 'POS', 'Representative_Docs', 'Top_n_words'])
+    #document_info = document_info.sort_values(by=['Topic', 'Probability'], ascending=[True, False])
     document_info = document_info.sort_values(by=['Topic'], ascending=[True])
     document_info = document_info.drop(columns=['Document'])
     document_info.to_csv(os.path.join(TABLE_DATA_DIR, f'document_table_{index}.csv'), index=True)
@@ -200,48 +200,121 @@ def generate_topic_name_description(path):
     if not os.path.exists(save_dir):
         print(f'produce full topic model of {index}.')
         os.makedirs(save_dir, exist_ok=True)
-        
+        # set quantization configuration to load large model with less GPU memory
+        # this requires the `bitsandbytes` library
+        bnb_config = transformers.BitsAndBytesConfig(
+            load_in_4bit=True,  # 4-bit quantization
+            bnb_4bit_quant_type='nf4',  # Normalized float 4
+            bnb_4bit_use_double_quant=True,  # Second quantization after the first
+            bnb_4bit_compute_dtype=torch.bfloat16  # Computation type
+        )
+        # Llama 2 Tokenizer
+        tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+
+        # Llama 2 Model
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            model_id,
+            trust_remote_code=True,
+            quantization_config=bnb_config,
+            # device_map={"":0},
+            # device_map='auto',
+            # load_in_8bit=True
+        )
+        model.eval()
+        # topic name generate
+        generator_name = transformers.pipeline(
+            model=model, tokenizer=tokenizer,
+            task='text-generation',
+            temperature=0.1,  # smaller to sharper token distribution
+            max_new_tokens=50,  # label max tokens=50
+            repetition_penalty=1.1
+        )
         # System prompt describes information given to all conversations
-        system_prompt = """You are a helpful, respectful and honest assistant for labeling topics.\n"""
+        system_prompt = """<s>[INST] <<SYS>>
+        You are a helpful, respectful and honest assistant for labeling topics.
+        <</SYS>>
+        """
         # Example prompt demonstrating the output we are looking for
-        example_prompt = """I have a topic that contains the following documents:
-- China threatened retaliation on Wednesday if U.S. House Speaker Kevin McCarthy meets with Taiwan's president during her upcoming trip through Los Angeles. President Tsai Ing-wen left Taiwan Wednesday afternoon on a tour of the island's diplomatic allies in the Americas, which she framed as a chance to demonstrate Taiwan’s commitment to democratic values on the world stage.
-- Following a visit by then-House Speaker Nancy Pelosi to Taiwan in 2022, Beijing launched missiles over the area, deployed warships across the median line of the Taiwan Strait and carried out military exercises in a simulated blockade of the island. Beijing also suspended climate talks with the U.S. and restricted military-to-military communication with the Pentagon.
-- Risking China’s anger, House Speaker Kevin McCarthy hosted Taiwan President Tsai Ing-wen on Wednesday as a “great friend of America” in a fraught show of U.S. support at a rare high-level, bipartisan meeting on U.S. soil. Speaking carefully to avoid unnecessarily escalating tensions with Beijing, Tsai and McCarthy steered clear of calls from hard-liners in the U.S. for a more confrontational stance toward China in defense of self-ruled Taiwan.
+        example_prompt = """
+        I have a topic that contains the following documents:
+        - China threatened retaliation on Wednesday if U.S. House Speaker Kevin McCarthy meets with Taiwan's president during her upcoming trip through Los Angeles. President Tsai Ing-wen left Taiwan Wednesday afternoon on a tour of the island's diplomatic allies in the Americas, which she framed as a chance to demonstrate Taiwan’s commitment to democratic values on the world stage.
+        - Following a visit by then-House Speaker Nancy Pelosi to Taiwan in 2022, Beijing launched missiles over the area, deployed warships across the median line of the Taiwan Strait and carried out military exercises in a simulated blockade of the island. Beijing also suspended climate talks with the U.S. and restricted military-to-military communication with the Pentagon.
+        - Risking China’s anger, House Speaker Kevin McCarthy hosted Taiwan President Tsai Ing-wen on Wednesday as a “great friend of America” in a fraught show of U.S. support at a rare high-level, bipartisan meeting on U.S. soil. Speaking carefully to avoid unnecessarily escalating tensions with Beijing, Tsai and McCarthy steered clear of calls from hard-liners in the U.S. for a more confrontational stance toward China in defense of self-ruled Taiwan.
 
-The topic is described by the following keywords: 'tsai, taiwan, mccarthy, speaker, china, meeting, house, beijing, house speaker, visit'.
+        The topic is described by the following keywords: 'tsai, taiwan, mccarthy, speaker, china, meeting, house, beijing, house speaker, visit'.
 
-Based on the information about the topic above, please create a short label of this topic and give a description of this topic.
+        Based on the information about the topic above, please create a short label of this topic. Make sure you to only return the label and nothing more.
 
-Label: US House speaker and Taiwan president meet as China protests
-
-Description: Despite China's warning, US House Speaker Kevin McCarthy received Taiwanese President Tsai Ing-wen as a "great friend of the United States" and held a high-level bipartisan meeting in the United States. This is another meeting between Taiwan and the United States after then-House Speaker Nancy Pelosi visited Taiwan and China conducted military exercises simulating a blockade of Taiwan in 2022. Tsai Ing-wen and McCarthy are cautious to avoid unnecessary escalation of tensions with China, eschewing calls from U.S. hardliners to take a more confrontational stance toward China.
+        [/INST] US House speaker and Taiwan president meet as China protests
         """
 
         # Our main prompt with documents ([DOCUMENTS]) and keywords ([KEYWORDS]) tags
         main_prompt = """
-        
-I have a topic that contains the following documents:
-[DOCUMENTS]
+        [INST]
+        I have a topic that contains the following documents:
+        [DOCUMENTS]
 
-The topic is described by the following keywords: '[KEYWORDS]'.
+        The topic is described by the following keywords: '[KEYWORDS]'.
 
-Based on the information about the topic above, please create a short label of this topic and give a description of this topic.
-
-Label: 
+        Based on the information about the topic above, please create a short label of this topic. Make sure you to only return the label and nothing more.
+        [/INST]
         """
-        client = OpenAI(api_key="sk-fQ7kzlsGQ8J4jjyj1MsvMmUkAkXflD5TEwgcG4KlJGrkg5Tn", base_url="https://api.chatanywhere.tech/v1")
-
         prompt_name = system_prompt + example_prompt + main_prompt
-        print(prompt_name)
         # Text generation with Llama 2
-        llama2_name = bertOpenAI(client, model='gpt-3.5-turbo-0613', prompt=prompt_name, nr_docs=3, doc_length=200, chat=True, tokenizer='whitespace')
+        llama2_name = TextGeneration(generator_name, prompt=prompt_name, nr_docs=3, diversity=0.1, doc_length=200,
+                                     tokenizer='whitespace')
         # default: nr_docs=4, diversity=None, doc_length/tokenizer=None
         # 3 representative diverse documents, every limited to word length=200
 
+        # topic description generate
+        generator_description = transformers.pipeline(
+            model=model, tokenizer=tokenizer,
+            task='text-generation',
+            temperature=0.1,  # smaller to sharper token distribution
+            max_new_tokens=200,  # label max tokens=50
+            repetition_penalty=1.1
+        )
+        # System prompt describes information given to all conversations
+        system_prompt = """<s>[INST] <<SYS>>
+        You are a helpful, respectful and honest assistant for describing topics.
+        <</SYS>>
+        """
+        # Example prompt demonstrating the output we are looking for
+        example_prompt = """
+        I have a topic that is described by the following keywords: 'tsai, taiwan, mccarthy, speaker, china, meeting, house, beijing, house speaker, visit'.
+
+        In this topic, the following documents are a small but representative subset of all documents in the topic:
+        - China threatened retaliation on Wednesday if U.S. House Speaker Kevin McCarthy meets with Taiwan's president during her upcoming trip through Los Angeles. President Tsai Ing-wen left Taiwan Wednesday afternoon on a tour of the island's diplomatic allies in the Americas, which she framed as a chance to demonstrate Taiwan’s commitment to democratic values on the world stage.
+        - Following a visit by then-House Speaker Nancy Pelosi to Taiwan in 2022, Beijing launched missiles over the area, deployed warships across the median line of the Taiwan Strait and carried out military exercises in a simulated blockade of the island. Beijing also suspended climate talks with the U.S. and restricted military-to-military communication with the Pentagon.
+        - Risking China’s anger, House Speaker Kevin McCarthy hosted Taiwan President Tsai Ing-wen on Wednesday as a “great friend of America” in a fraught show of U.S. support at a rare high-level, bipartisan meeting on U.S. soil. Speaking carefully to avoid unnecessarily escalating tensions with Beijing, Tsai and McCarthy steered clear of calls from hard-liners in the U.S. for a more confrontational stance toward China in defense of self-ruled Taiwan.
+
+        Based on the information above, please give a description of this topic. Make sure you to only return the topic description and nothing more.
+
+        [/INST] Despite China's warning, US House Speaker Kevin McCarthy received Taiwanese President Tsai Ing-wen as a "great friend of the United States" and held a high-level bipartisan meeting in the United States. This is another meeting between Taiwan and the United States after then-House Speaker Nancy Pelosi visited Taiwan and China conducted military exercises simulating a blockade of Taiwan in 2022. Tsai Ing-wen and McCarthy are cautious to avoid unnecessary escalation of tensions with China, eschewing calls from U.S. hardliners to take a more confrontational stance toward China.
+        """
+
+        # Our main prompt with documents ([DOCUMENTS]) and keywords ([KEYWORDS]) tags
+        main_prompt = """
+        [INST]
+        I have a topic that is described by the following keywords: '[KEYWORDS]'.
+
+        In this topic, the following documents are a small but representative subset of all documents in the topic:
+        [DOCUMENTS]
+
+        Based on the information above, please give a description of this topic. Make sure you to only return the topic description and nothing more.
+        [/INST]
+        """
+
+        prompt_description = system_prompt + example_prompt + main_prompt
+        # Text generation with Llama 2
+        llama2_description = TextGeneration(generator_description, prompt=prompt_description, nr_docs=3, diversity=0.1,
+                                            doc_length=200,
+                                            tokenizer='whitespace')
+
         # All representation models
         representation_model = {
-            "llama2-name": llama2_name
+            "llama2-name": llama2_name,
+            "llama2-description": llama2_description
         }
         topic_model.update_topics(contents, representation_model=representation_model)
         # save full topic model
@@ -251,43 +324,48 @@ Label:
             pickle.dump(topic_model.representative_docs_, handle, protocol=pickle.HIGHEST_PROTOCOL)
     # save table topics
     print('loading topic model')
-    topic_model = BERTopic.load(save_dir, embedding_model=embedding_model)
+    #topic_model = BERTopic.load(save_dir, embedding_model=embedding_model)
+    topic_model = BERTopic.load(save_dir,embedding_model=embedding_model)
     topic_info = topic_model.get_topic_info()
     # extract name and description from list
     topic_labels = topic_model.get_topics(full=True)
-    
-    labels, summary = [], []
-    for label in topic_labels["llama2-name"].values():
-        tmp = label[0][0].split("\n\nDescription:")
-        print(tmp)
-        print('-'*100)
-
-        if ":" in tmp[0]:
-            labels.append(tmp[0].split(':')[1].strip())
-        else:
-            labels.append(tmp[0].strip())
-        if len(tmp) < 2:
-            summary.append(tmp[0].strip())
-        else:
-            summary.append(tmp[1].strip())
-        
-       
-
-    topic_info['llama2-name'] = labels
-    topic_info['llama2-description'] = summary
+    topic_info['llama2-name'] = [label[0][0].split("\n")[0].strip() for label in topic_labels["llama2-name"].values()]
+    topic_info['llama2-description'] = [label[0][0].strip() for label in topic_labels["llama2-description"].values()]
     for col in ['Representation', 'KeyBERT', 'MMR', 'POS']:
         topic_info[col] = topic_info[col].apply(lambda x: json.dumps(x))
-   
+    '''
+    topic_keywords = []
+    for ind in topic_info.index:
+        tmp_set = set()
+        for col in ['Representation', 'KeyBERT', 'MMR', 'POS']:
+            tmp = topic_info[col][ind]
+            tmp_set = tmp_set | set(tmp)
+        topic_keywords.append(json.dumps(list(tmp_set)))
+    topic_info['keywords'] = topic_keywords
+    '''
     # rename columns
     topic_info.rename(columns={"Count": "count", "llama2-name": "name", "llama2-description": "summary"}, inplace=True)
     # drop columns
     # columns_to_remove = ['Representation', 'KeyBERT', 'MMR', 'POS', 'Representative_Docs']
-    columns_to_remove = ['Representative_Docs','Representation', 'KeyBERT', 'MMR', 'POS']
+    columns_to_remove = ['Representative_Docs']
     topic_info = topic_info.drop(columns=columns_to_remove)
     topic_info.to_csv(os.path.join(TABLE_DATA_DIR, f'topic_table_full_{index}.csv'), index=False)
     print("Generate finish!")
     print(f"save path: {os.path.join(TABLE_DATA_DIR, f'topic_table_full_{index}.csv')}")
-    
+    # table: topic (Topic, Count, Name, keywords, name, summary)
+    # save table news (same)
+    '''
+    document_info = topic_model.get_document_info(contents)
+    document_info = document_info.drop(
+        columns=columns_to_remove + ['llama2-name', 'llama2-description', 'Top_n_words'])
+    document_info = document_info.sort_values(by=['Topic', 'Probability'], ascending=[True, False])
+    document_info = document_info.drop(columns=['Document'])
+    document_info.to_csv(os.path.join(RES_DIR, GRAIN, f'document_table_full_{year}.csv'), index=True)
+    # table: news (index, Topic,Name,Probability,Representative_document)
+    '''
+    # return topic_model
+
+    # del topic_model, model, embedding_model
     del topic_model, embedding_model
     gc.collect()
     torch.cuda.empty_cache()
@@ -333,14 +411,12 @@ def topic_analysis(path):
 
     stats = news_topic_classify(path)
 
-    # print('Generate')
     generate_topic_name_description(path)
     # stats, _ = clean_file_read(year)
-    # print(stats)
+    print(stats)
 
     topic_dict = extract_topic(topk=10, path=path)
     print(topic_dict)
-    # topic_dict = None
 
     return stats, topic_dict
     
@@ -356,6 +432,5 @@ def topic_analysis(path):
 
 #     # topic_dict = extract_topic(topk=10, year=year)
 #     # print(topic_dict)
-
-#     raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0527/tw_news2023_r3k.json'
+#     raw_data_path = '/data/zhuoran/code/openagents/test.jsonl'
 #     stats, topic_dict = topic_analysis(raw_data_path)

@@ -1,8 +1,9 @@
+import string
 import traceback
 import os
 from typing import Dict, List, Union
 from flask import Response, request, stream_with_context, Response
-
+import torch
 from backend.api.file import _get_file_path_from_node
 from backend.api.language_model import get_llm
 from backend.app import app
@@ -33,14 +34,20 @@ from real_agents.adapters.data_model import DatabaseDataModel, DataModel, JsonDa
     TableDataModel
 from real_agents.adapters.executors import ChatExecutor
 from real_agents.adapters.interactive_executor import initialize_agent
-from real_agents.data_agent import CodeGenerationExecutor, KaggleDataLoadingExecutor
+from real_agents.data_agent import CodeGenerationExecutor, KaggleDataLoadingExecutor,KnowledgeRetriever, KnowledgeBase
 from real_agents.adapters.memory import ConversationReActBufferMemory, \
     ReadOnlySharedStringMemory
-
-
+import pandas as pd
+import json
 # self code
 from backend.topic.topic_new import topic_analysis
 # import multiprocessing
+
+print("--------->",torch.cuda.device_count())
+news_knowledge_base = KnowledgeBase(store_type="chroma",embedding_model='all-MiniLM-L6-v2',data_path="/data/zhuoran/data/tw_news/tw_news_semantic_split.jsonl",
+                     Persist_directory="/data/zhuoran/data/tw_news/Vectorstore/chroma_db/tw_news2023_semantic_percentile_split")
+    #news_knowledge_base =  knowledge_base_register.get_variable(knowledge_base_id)
+news_retriever_executor = KnowledgeRetriever(Knowledge_Base=news_knowledge_base,retrieval_type="ensemble")
 
 def create_interaction_executor(
         grounding_source_dict: Dict[str, DataModel],
@@ -100,18 +107,75 @@ def create_interaction_executor(
 
     kaggle_data_loading_executor = KaggleDataLoadingExecutor()
 
+    # def run_instance_detection_builder(term: str) -> Union[Dict, DataModel]:
+    #     try:
+    #         if 'sentiment_file_path' not in grounding_source_dict:
+    #             raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+    #             grounding_source_dict['sentiment_file_path']='/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+    #             grounding_source_pool.set_pool_info_with_id(user_id, chat_id,
+    #                                                     grounding_source_dict)
+    #         else:
+    #             raw_data_path = grounding_source_dict['sentiment_file_path']
+    #         #raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+    #         stats, topic_dict = sentiment_analysis(raw_data_path)
+    #         # # 自动加载news数据
+    #         file_path = topic_dict['path']
+    #         filename = file_path.split('/')[-1]
+    #         filename_no_ext = os.path.splitext(filename)[0]
+            
+    #         data = load_grounding_source(file_path)
+    #         data_dict = data.to_dict('records')
+    #         columns = list(map(lambda item: {"accessorKey": item, "header": item},
+    #                           data_dict[0].keys() ))
+    #         human_side_data = json.dumps({"columns": columns, "data": data_dict})
+    #         human_side_data_type = "table"
+    #         table_data =  human_side_data
+                    
+           
+    #         data_model = get_data_model_cls(filename).from_raw_data(
+    #             raw_data=data,
+    #             raw_data_name=filename_no_ext,
+    #             raw_data_path=file_path,
+    #         )
+    #         grounding_source_dict[file_path] = data_model
+    #         #TODO 这个主题分析的表格可以放上去
+    #         input_grounding_source = [gs for gs in grounding_source_dict.values()]
+            
+    #         # Get the result
+    #         results = basic_chat_executor.run(
+    #             # user_intent=term,
+    #             user_intent=new_user_intent,
+    #             llm=llm,
+    #         )
+
+    #         logger.bind(msg_head=f"TopicExtractor results({llm})").debug(results)
+    #         # return results["result"]
+    #         observation = JsonDataModel.from_raw_data(
+    #                 {
+    #                     "success": True,
+    #                     "result": results["result"],
+    #                     "table": table_data,
+    #                 }
+    #             )
+    #         return observation
     def run_topic_extract_builder(term: str) -> Union[Dict, DataModel]:
 
         try:
-            # raw_data_path = grounding_source_dict[]
-            raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+            if 'topic_file_path' not in grounding_source_dict:
+                raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+                grounding_source_dict['topic_file_path']='/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
+                grounding_source_pool.set_pool_info_with_id(user_id, chat_id,
+                                                        grounding_source_dict)
+            else:
+                raw_data_path = grounding_source_dict['topic_file_path']
+            #raw_data_path = '/data/llmagents/data/llm_agent/tai_news_0526/tw_news2023_r3k.json'
             stats, topic_dict = topic_analysis(raw_data_path)
             logger.bind(api="/chat",
                         msg_head="Analysis news from ").debug(stats['path'])
 
             data_summary = f"We retrieve related data that contains {stats['count']} news from different {stats['url_count']} \
 websites during {stats['mintime']} to {stats['maxtime']}.\n\n"
-
+            
             topics = topic_dict['Topic']
             counts = topic_dict['Count']
             summary = topic_dict['Summary']
@@ -130,13 +194,21 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             filename_no_ext = os.path.splitext(filename)[0]
             
             data = load_grounding_source(file_path)
+            data_dict = data.to_dict('records')
+            columns = list(map(lambda item: {"accessorKey": item, "header": item},
+                              data_dict[0].keys() ))
+            human_side_data = json.dumps({"columns": columns, "data": data_dict})
+            human_side_data_type = "table"
+            table_data =  human_side_data
+                    
+           
             data_model = get_data_model_cls(filename).from_raw_data(
                 raw_data=data,
                 raw_data_name=filename_no_ext,
                 raw_data_path=file_path,
             )
             grounding_source_dict[file_path] = data_model
-
+            #TODO 这个主题分析的表格可以放上去
             input_grounding_source = [gs for gs in grounding_source_dict.values()]
             
             # Get the result
@@ -152,7 +224,15 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             )
 
             logger.bind(msg_head=f"TopicExtractor results({llm})").debug(results)
-            return results["result"]
+            # return results["result"]
+            observation = JsonDataModel.from_raw_data(
+                    {
+                        "success": True,
+                        "result": results["result"],
+                        "table": table_data,
+                    }
+                )
+            return observation
             # if results["result"]["success"]:
             #     if results["result"]["result"] is not None:
             #         raw_output = results["result"]["result"]
@@ -206,7 +286,7 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
                     msg_head="line grounding source").debug(grounding_source_dict)
 
-            input_grounding_source = [gs for gs in grounding_source_dict.values()]
+            input_grounding_source = [gs for gs in grounding_source_dict.values() if isinstance(gs,TableDataModel)]
             
             # Get the result
             results = line_code_generation_executor.run(
@@ -260,21 +340,21 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
         try:
             # term += "using topic_analysis.csv"
             # # 自动加载topic datamodel数据
-            # file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_analysis.csv'
-            # filename = 'topic_analysis.csv' 
-            # filename_no_ext = os.path.splitext(filename)[0]
+            file_path = '/data/llmagents/code/OpenAgents/backend/data/DefaultUser/topic_table_test.csv'
+            filename = 'topic_table_test.csv' 
+            filename_no_ext = os.path.splitext(filename)[0]
             
-            # data = load_grounding_source(file_path)
-            # data_model = get_data_model_cls(filename).from_raw_data(
-            #     raw_data=data,
-            #     raw_data_name=filename_no_ext,
-            #     raw_data_path=file_path,
-            # )
-            # grounding_source_dict[file_path] = data_model
+            data = load_grounding_source(file_path)
+            data_model = get_data_model_cls(filename).from_raw_data(
+                raw_data=data,
+                raw_data_name=filename_no_ext,
+                raw_data_path=file_path,
+            )
+            grounding_source_dict[file_path] = data_model
             logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
                     msg_head="pie grounding source").debug(grounding_source_dict)
 
-            input_grounding_source = [gs for gs in grounding_source_dict.values()]
+            input_grounding_source = [gs for gs in grounding_source_dict.values() if isinstance(gs, TableDataModel)]
             
             # Get the result
             results = pie_code_generation_executor.run(
@@ -514,6 +594,62 @@ Please provide a succinct yet meaningful summary for the topic, count and summar
             traceback.print_exc()
             results = basic_chat_executor.run(user_intent=term, llm=llm)
             return results["result"]
+    def run_knowledge_base_retriever(term: str) -> List:
+        try:
+            results = news_retriever_executor.run(llm=llm,user_intent=term)
+            
+            #todo 处理成json文件，然后存一下grounding_source_dict
+            dict_list = [dict(item) for item in results['extra_docs']]
+            def change(x):
+                namelist = ['date','title','url']
+                y = {}
+                y['content'] = x['page_content']
+                y[namelist[0]] = x['metadata'][namelist[0]]
+                y[namelist[1]] = x['metadata'][namelist[1]]
+                y[namelist[2]] = ''
+                return y
+            original_list = list(map(change,dict_list))
+            docs = pd.DataFrame(original_list)
+            path = '/data/zhuoran/code/openagents/test.jsonl'
+            with open(path, 'w') as file:
+                # 遍历DataFrame的每一行
+                for _, row in docs.iterrows():
+                    # 将行转换为JSON字符串
+                    json_str = row.to_json()
+                    # 写入文件，每个JSON对象后跟一个换行符
+                    file.write(json_str + '\n')
+            # grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
+            #                                                                     chat_id,
+            #                                                                     default_value={})
+            # grounding_source_dict['topic_file_path']=path
+            # grounding_source_pool.set_pool_info_with_id(user_id, chat_id,
+            #                                                 grounding_source_dict)
+            
+            columns = list(map(lambda item: {"accessorKey": item, "header": item},
+                              original_list[0].keys() ))
+            human_side_data = json.dumps({"columns": columns, "data": original_list[:5]})
+            human_side_data_type = "table"
+            data = { "content": human_side_data,
+                    "type": human_side_data_type}
+            results = JsonDataModel.from_raw_data(
+                    {
+                        "success": True,
+                        "table": data["content"],
+                        "result": results['answer']
+                        }
+            )
+            #logger.bind(msg_head=f"KnowledgeRetriever results({llm})").debug(results)
+            # if results["result"]["success"]:
+            #     results = JsonDataModel.from_raw_data(
+            #         {
+            #             "success": True,
+            #             "kaggle_action": results["kaggle_action"],
+            #             "kaggle_output_info": results["kaggle_output_info"],
+            #         },
+            #     )
+            return results
+        except Exception as e:
+            logger.bind(msg_head=f"KnowledgeRetriever results({llm})").error(str(e))
     #TODO 查看一下langchain定义tool的过程
     tool_dict = {
 
@@ -537,7 +673,7 @@ Input: A natural question and the path of topic (sentiment/stance), count and th
 Output: A summary ahout data distribution + an Echarts script, specifically tailored for main topics (sentiments/stances), that generates an interactive chart upon execution.
 Note: The tool MUST be used whenever you want to visualize the changes of hot topics, sentiments or stances following real time.
         """,
-                ),
+                    return_direct = True    ),
         "PiePloter": Tool(
                     name="PiePloter",
                     func=run_pie_builder,
@@ -547,7 +683,7 @@ Input: A natural question and the path of topic (sentiment/stance) and the corre
 Output: A summary ahout data distribution + an Echarts script, specifically tailored for main topics (sentiments/stances), that generates an interactive chart upon execution.
 Note: The tool MUST be used whenever you want to visualize hot topics, sentiments or stances distribution.
         """,
-                ),
+                    return_direct = True),
         "TopicExtractor": Tool(
             name="TopicExtractor",
             func=run_topic_extract_builder,
@@ -596,7 +732,17 @@ Description: The KaggleDataLoader tool allows you to seamlessly connect to Kaggl
 Input: A natural language intent that may mention path of the Kaggle dataset, or some keyword or other relevant information about the dataset you are interested in.
 Output: The action you want to perform, and the extracted path or searched relevant datasets depending on your input.
 """,
+
         ),
+        "Retrieval": Tool(
+                    name="Retrieval",
+                    func=run_knowledge_base_retriever,
+                    description="""
+Description: This tool aims to use the existing news database for retrieval to obtain a news collection that is more semantically similar to the sentence entered by the user.
+Input: A natural language query related to a specific topic.
+Output: A list of news items related to the query.
+Note: Used when the user expresses the need to perform a search or retrieval.
+        """),
     }
     # Data profiling is not activated in agent
     IGNORE_TOOLS = ["DataProfiling"]
@@ -650,7 +796,6 @@ def chat() -> Response | Dict:
         grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
                                                                                 chat_id,
                                                                                 default_value={})
-
         logger.bind(user_id=user_id, chat_id=chat_id, api="/chat",
                     msg_head="grounding source").debug(grounding_source_dict)
 
@@ -700,6 +845,7 @@ def chat() -> Response | Dict:
             grounding_source_dict = grounding_source_pool.get_pool_info_with_id(user_id,
                                                                                 chat_id,
                                                                                 default_value={})
+            
             # Build executor and run chat
             interaction_executor = create_interaction_executor(
                 grounding_source_dict=grounding_source_dict,

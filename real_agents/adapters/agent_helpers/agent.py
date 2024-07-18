@@ -276,6 +276,7 @@ class Agent(BaseSingleActionAgent):
         thoughts = self._construct_scratchpad(intermediate_steps)
         new_inputs = {"agent_scratchpad": thoughts, "stop": self._stop}
         full_inputs = {**kwargs, **new_inputs}
+        # 模型输出 thoughts + stop + input + chat_history
         return full_inputs
 
     @property
@@ -578,7 +579,7 @@ class AgentExecutor(Chain):
                 tool = name_to_tool_map[agent_action.tool]
                 return_direct = tool.return_direct
                 color = color_mapping[agent_action.tool]
-                tool_run_kwargs = self.agent.tool_run_logging_kwargs()
+                tool_run_kwargs = self.agent.tool_run_logging_kwargs() # {'llm_prefix': 'Thought:', 'observation_prefix': 'Observation: '}
                 if return_direct:
                     tool_run_kwargs["llm_prefix"] = ""
                 # We then call the tool on the tool input to get an observation

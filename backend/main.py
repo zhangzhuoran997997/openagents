@@ -1,4 +1,5 @@
 import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2,5'
 import warnings
 import threading
 

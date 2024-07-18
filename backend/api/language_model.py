@@ -14,6 +14,7 @@ def get_llm_list():
     """Gets the whole llm list."""
     return [
         {"id": llm, "name": llm} for llm in [
+            "LLM-base Agent",
             "gpt-3.5-turbo-16k",
             "gpt-3.5-turbo",
             # "gpt-4",
@@ -26,10 +27,12 @@ def get_llm_list():
 
 def get_llm(llm_name: str, **kwargs) -> BaseLanguageModel:
     """Gets the llm model by its name."""
-    if llm_name in ["gpt-3.5-turbo","gpt-3.5-turbo-16k", "gpt-4"]:
+    if llm_name in ["gpt-3.5-turbo","gpt-3.5-turbo-16k", "gpt-4","LLM-base Agent"]:
         openai_api_type = os.getenv("OPENAI_API_TYPE", "open_ai")
         if openai_api_type == "open_ai":
-            return ChatOpenAI(model="gpt-3.5-turbo-0613",temperature=0.,api_key='sk-7MXSRgc2cFT8G8g2V15NINs0IKGAAbrG8zllzbR1IgdWQxb3',base_url='https://api.chatanywhere.tech/v1')
+            temperature = kwargs.get("temperature", 0.5)
+            return ChatOpenAI(model="gpt-3.5-turbo-16k",temperature=temperature,api_key='sk-fQ7kzlsGQ8J4jjyj1MsvMmUkAkXflD5TEwgcG4KlJGrkg5Tn',base_url='https://api.chatanywhere.tech/v1',streaming=True,
+            verbose=True)
             chat_openai = ChatOpenAI
             kwargs.update({"model_name": llm_name})
         elif openai_api_type == "azure":

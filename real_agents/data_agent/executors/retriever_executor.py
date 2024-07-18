@@ -119,7 +119,7 @@ class KnowledgeRetriever:
             return bm25_retriever
 
         def get_multiquery_retriever(vectordb,llm = None, **kwargs):
-            llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0,api_key="sk-7MXSRgc2cFT8G8g2V15NINs0IKGAAbrG8zllzbR1IgdWQxb3",
+            llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0,api_key="sk-fQ7kzlsGQ8J4jjyj1MsvMmUkAkXflD5TEwgcG4KlJGrkg5Tn",
                         base_url="https://api.chatanywhere.tech/v1")
             return MultiQueryRetriever.from_llm(
             retriever = vectordb.as_retriever(search_type="similarity_score_threshold",search_kwargs={"score_threshold": 0.2}),llm=llm,include_original=True
@@ -149,8 +149,8 @@ class KnowledgeRetriever:
                 Retrievers.append(retriever)
             return EnsembleRetriever(retrievers = Retrievers,weights=Weights)
     def get_prompt_template(self):
-            RETRIEVAL_QA_PROMPT = """Based on a series of documents as follow, some of which are related to the question and some of which are not. Please answer the question based on some of the context, expecially the extra documents , taking into account the relevance and correctness. If the user asks a question that is not directly found in the context below, try to summarise the context and answer the question.
-            Give detailed answers with appropriate references from background knowledge documents. Do not output irrelevant information and redundant answer.
+            RETRIEVAL_QA_PROMPT = """Based on a series of documents as follow, give detailed answers with appropriate references from background knowledge documents. If the user asks a question that is not directly found in the context below, try to summarise the context and answer the question.
+            GDo not output irrelevant information and redundant answer.
 
             <context>
             {context}
@@ -240,7 +240,8 @@ class KnowledgeBase:
     def get_embedding_model(self,Modal_Name,**kwargs):
         #TODO 这里可以把model_kwargs写全并设置好Default，后续可以在config中配置
         model_kwargs = {'device': 'cuda:0'}
-        local_embeddings = HuggingFaceEmbeddings(model_name=Modal_Name,model_kwargs=model_kwargs)
+        #local_embeddings = HuggingFaceEmbeddings(model_name=Modal_Name,model_kwargs=model_kwargs)
+        local_embeddings = HuggingFaceEmbeddings(model_name=Modal_Name)
         return local_embeddings
     @timing
     def get_vectorstore(self,use_embedding, data=None, store_type="chroma",**kwargs):
